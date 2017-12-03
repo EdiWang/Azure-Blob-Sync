@@ -8,3 +8,4 @@ c:\GitHub\Azure-Blob-Backup\src\Edi.AzureBlobSync\obj\Debug\netcoreapp2.0\Edi.Az
 c:\GitHub\Azure-Blob-Backup\src\Edi.AzureBlobSync\obj\Debug\netcoreapp2.0\Edi.AzureBlobSync.AssemblyInfo.cs
 c:\GitHub\Azure-Blob-Backup\src\Edi.AzureBlobSync\obj\Debug\netcoreapp2.0\Edi.AzureBlobSync.dll
 c:\GitHub\Azure-Blob-Backup\src\Edi.AzureBlobSync\obj\Debug\netcoreapp2.0\Edi.AzureBlobSync.pdb
+C:\GitHub\Azure-Blob-Backup\src\Edi.AzureBlobSync\obj\Debug\netcoreapp2.0\Edi.AzureBlobSync.csprojResolveAssemblyReference.cache

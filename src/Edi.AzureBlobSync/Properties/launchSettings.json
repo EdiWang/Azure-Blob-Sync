@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Edi.AzureBlobSync": {
+      "commandName": "Project",
+      "commandLineArgs": "-n fuck -k shit -p dick"
+    }
+  }
+}

@@ -7,7 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/Edi.AzureBlobSync/Edi.AzureBlobSync.csproj"
+                "${workspaceFolder}/Edi.AzureBlobSync.csproj"
             ],
             "problemMatcher": "$msCompile"
         }
