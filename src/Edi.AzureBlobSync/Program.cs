@@ -97,6 +97,7 @@ namespace Edi.AzureBlobSync
                 {
                     Console.WriteLine($"{excepts.Count} new file(s) to download. [ENTER] to continue, other key to cancel.");
                     var k = Console.ReadKey();
+                    Console.WriteLine();
                     if (k.Key == ConsoleKey.Enter)
                     {
                         // Download New Files
@@ -121,6 +122,7 @@ namespace Edi.AzureBlobSync
                 {
                     Console.WriteLine($"{localExcepts.Count} redundancy file(s) exists in local but not on cloud, [V] to view file list, [ENTER] to continue.");
                     var k = Console.ReadKey();
+                    Console.WriteLine();
                     if (k.Key == ConsoleKey.V)
                     {
                         foreach (var f in localExcepts)
@@ -128,11 +130,15 @@ namespace Edi.AzureBlobSync
                             Console.WriteLine($"{f.FileName}\t{f.Length} bytes");
                         }
                     }
-                    if (k.Key == ConsoleKey.Enter)
+
+                    var k1 = Console.ReadKey();
+                    Console.WriteLine();
+                    if (k1.Key == ConsoleKey.Enter)
                     {
                         Console.WriteLine($"Do you want to delete these files? [Y/N]");
-                        var k1 = Console.ReadKey();
-                        if (k1.Key == ConsoleKey.Y)
+                        var k2 = Console.ReadKey();
+                        Console.WriteLine();
+                        if (k2.Key == ConsoleKey.Y)
                         {
                             Console.WriteLine("Deleting local redundancy files...");
                             foreach (var fi in localExcepts)
