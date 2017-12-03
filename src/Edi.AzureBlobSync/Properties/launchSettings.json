@@ -1,8 +1,7 @@
 {
   "profiles": {
     "Edi.AzureBlobSync": {
-      "commandName": "Project",
-      "commandLineArgs": "-n ediwangstorage -k FcyY5IdB77FNVcs81661AofV22dYWPffvbbGSd1+8H34HNrfr/30g4pDvwEJ8OibbLCo+om0O0/JQtVB3SKHPA== -c ediwang-images -p C:\\Temp"
+      "commandName": "Project"
     }
   }
 }
