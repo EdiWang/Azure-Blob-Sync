@@ -76,6 +76,11 @@ namespace Edi.AzureBlobSync
                 Console.WriteLine($"{cloudFiles.Count} cloud file(s) found.");
 
                 // 2. Get Local Files
+                if (!Directory.Exists(Options.LocalFolderPath))
+                {
+                    Directory.CreateDirectory(Options.LocalFolderPath);
+                }
+
                 var localFilePaths = Directory.GetFiles(Options.LocalFolderPath);
                 var localFiles = localFilePaths.Select(filePath => new FileInfo(filePath))
                                                .Select(fi => new FileSyncInfo
