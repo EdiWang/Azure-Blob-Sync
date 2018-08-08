@@ -73,6 +73,7 @@ namespace Edi.AzureBlobSync
                 WriteMessage($"Account Name: {Options.AccountName}", ConsoleColor.DarkCyan);
                 WriteMessage($"Container Name: {Options.ContainerName}", ConsoleColor.DarkCyan);
                 WriteMessage($"Download Threads: {Options.MaxConcurrency}", ConsoleColor.DarkCyan);
+                WriteMessage($"Local Path: {Options.LocalFolderPath}", ConsoleColor.DarkCyan);
                 Console.WriteLine();
 
                 // 1. Get Azure Blob Files
@@ -116,17 +117,16 @@ namespace Edi.AzureBlobSync
                                                    })
                                                    .ToList();
 
-                    WriteMessage($"{localFiles.Count} local file(s) found.");
+                    WriteMessage($"{localFiles.Count} local file(s) found.", ConsoleColor.DarkGreen);
 
                     // 3. Compare Files
                     WriteMessage("Comparing file meta data...");
-                    WriteMessage("----------------------------------------------------");
 
                     // Files in cloud but not in local
                     var excepts = cloudFiles.Except(localFiles).ToList();
                     if (excepts.Any())
                     {
-                        WriteMessage($"{excepts.Count} new file(s) to download. [ENTER] to continue, other key to cancel.", ConsoleColor.Yellow);
+                        WriteMessage($"{excepts.Count} new file(s) to download. [ENTER] to continue, other key to cancel.", ConsoleColor.DarkYellow);
                         var k = Console.ReadKey();
                         Console.WriteLine();
                         if (k.Key == ConsoleKey.Enter)
@@ -157,7 +157,7 @@ namespace Edi.AzureBlobSync
                                         }
                                     });
 
-                                    WriteMessage($"Added {fileSyncInfo.FileName} ({fileSyncInfo.Length} bytes) to download tasks.");
+                                    // WriteMessage($"DEBUG: Added {fileSyncInfo.FileName} ({fileSyncInfo.Length} bytes) to download tasks.", ConsoleColor.DarkYellow);
                                     downloadTask.Add(t);
                                 }
 
@@ -175,7 +175,7 @@ namespace Edi.AzureBlobSync
                     var deleteCount = 0;
                     if (localExcepts.Any())
                     {
-                        WriteMessage($"{localExcepts.Count} redundancy file(s) exists in local but not on cloud, [V] to view file list, [ENTER] to continue.", ConsoleColor.Yellow);
+                        WriteMessage($"{localExcepts.Count} redundancy file(s) exists in local but not on cloud, [V] to view file list, [ENTER] to continue.", ConsoleColor.DarkYellow);
                         var k = Console.ReadKey();
                         Console.WriteLine();
                         if (k.Key == ConsoleKey.V)
@@ -190,7 +190,7 @@ namespace Edi.AzureBlobSync
                         Console.WriteLine();
                         if (k1.Key == ConsoleKey.Enter)
                         {
-                            WriteMessage($"Do you want to delete these files? [Y/N]", ConsoleColor.Yellow);
+                            WriteMessage($"Do you want to delete these files? [Y/N]", ConsoleColor.DarkYellow);
                             var k2 = Console.ReadKey();
                             Console.WriteLine();
                             if (k2.Key == ConsoleKey.Y)
@@ -237,7 +237,7 @@ namespace Edi.AzureBlobSync
             CloudBlockBlob blockBlob = BlobContainer.GetBlockBlobReference(remoteFileName);
             var newFilePath = Path.Combine(Options.LocalFolderPath, remoteFileName);
             await blockBlob.DownloadToFileAsync(newFilePath, FileMode.Create);
-            WriteMessage($"[{DateTime.Now}] {remoteFileName} downloaded.");
+            WriteMessage($"[{DateTime.Now}] downloaded {remoteFileName}.");
         }
 
         private static CloudBlobContainer GetBlobContainer()
