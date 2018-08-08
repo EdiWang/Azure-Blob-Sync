@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using CommandLine;
@@ -62,9 +64,19 @@ namespace Edi.AzureBlobSync
             if (parserResult.Tag == ParserResultType.Parsed)
             {
                 Options = ((Parsed<Options>)parserResult).Value;
+                var appVersion = typeof(Program).Assembly.GetName().Version;
+                WriteMessage("-------------------------------------------------");
+                WriteMessage($" Edi.AzureBlobSync {appVersion}");
+                WriteMessage($" OS Version: {Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment.OperatingSystemVersion}");
+                WriteMessage("-------------------------------------------------");
+                Console.WriteLine();
+                WriteMessage($"Account Name: {Options.AccountName}", ConsoleColor.DarkCyan);
+                WriteMessage($"Container Name: {Options.ContainerName}", ConsoleColor.DarkCyan);
+                WriteMessage($"Download Threads: {Options.MaxConcurrency}", ConsoleColor.DarkCyan);
+                Console.WriteLine();
 
                 // 1. Get Azure Blob Files
-                Console.WriteLine("Finding Files on Azure Blob Storage...");
+                WriteMessage($"[{DateTime.Now}] Finding Files on Azure Blob Storage...");
 
                 BlobContainer = GetBlobContainer();
                 if (null == BlobContainer)
@@ -87,7 +99,7 @@ namespace Edi.AzureBlobSync
                                           Length = blob.Properties.Length
                                       }).ToList();
 
-                    Console.WriteLine($"{cloudFiles.Count} cloud file(s) found.");
+                    WriteMessage($"{cloudFiles.Count} cloud file(s) found.", ConsoleColor.DarkGreen);
 
                     // 2. Get Local Files
                     if (!Directory.Exists(Options.LocalFolderPath))
@@ -225,7 +237,7 @@ namespace Edi.AzureBlobSync
             CloudBlockBlob blockBlob = BlobContainer.GetBlockBlobReference(remoteFileName);
             var newFilePath = Path.Combine(Options.LocalFolderPath, remoteFileName);
             await blockBlob.DownloadToFileAsync(newFilePath, FileMode.Create);
-            Console.WriteLine($"[{DateTime.Now}] {remoteFileName} downloaded.");
+            WriteMessage($"[{DateTime.Now}] {remoteFileName} downloaded.");
         }
 
         private static CloudBlobContainer GetBlobContainer()
