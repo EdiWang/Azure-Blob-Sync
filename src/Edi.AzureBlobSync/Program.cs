@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using CommandLine;
 using Microsoft.WindowsAzure.Storage;
@@ -23,6 +24,9 @@ namespace Edi.AzureBlobSync
 
         [Option('p', Default = "C:\\AzureBlobSyncTemp", Required = true, HelpText = "Local Folder Path")]
         public string LocalFolderPath { get; set; }
+
+        [Option('m', Default = 10, Required = false, HelpText = "Download threads")]
+        public int MaxConcurrency { get; set; }
     }
 
     class FileSyncInfo
@@ -74,14 +78,14 @@ namespace Edi.AzureBlobSync
                 {
                     var blobs = await BlobContainer.ListBlobsSegmentedAsync(null);
                     var cloudFiles = (from item in blobs.Results
-                        where item.GetType() == typeof(CloudBlockBlob)
-                        select (CloudBlockBlob)item
+                                      where item.GetType() == typeof(CloudBlockBlob)
+                                      select (CloudBlockBlob)item
                         into blob
-                        select new FileSyncInfo()
-                        {
-                            FileName = blob.Name,
-                            Length = blob.Properties.Length
-                        }).ToList();
+                                      select new FileSyncInfo()
+                                      {
+                                          FileName = blob.Name,
+                                          Length = blob.Properties.Length
+                                      }).ToList();
 
                     Console.WriteLine($"{cloudFiles.Count} cloud file(s) found.");
 
@@ -100,11 +104,11 @@ namespace Edi.AzureBlobSync
                                                    })
                                                    .ToList();
 
-                    Console.WriteLine($"{localFiles.Count} local file(s) found.");
+                    WriteMessage($"{localFiles.Count} local file(s) found.");
 
                     // 3. Compare Files
-                    Console.WriteLine($"Comparing file meta data...");
-                    Console.WriteLine("----------------------------------------------------");
+                    WriteMessage("Comparing file meta data...");
+                    WriteMessage("----------------------------------------------------");
 
                     // Files in cloud but not in local
                     var excepts = cloudFiles.Except(localFiles).ToList();
@@ -116,18 +120,42 @@ namespace Edi.AzureBlobSync
                         if (k.Key == ConsoleKey.Enter)
                         {
                             // Download New Files
-                            var downloadTask = new List<Task>();
-                            foreach (var fileSyncInfo in excepts)
+                            using (var concurrencySemaphore = new SemaphoreSlim(Options.MaxConcurrency))
                             {
-                                Console.WriteLine($"Added {fileSyncInfo.FileName} ({fileSyncInfo.Length} bytes) to download.");
-                                downloadTask.Add(DownloadAsync(fileSyncInfo.FileName));
+                                var downloadTask = new List<Task>();
+                                foreach (var fileSyncInfo in excepts)
+                                {
+                                    concurrencySemaphore.Wait();
+                                    //WriteMessage($"DEBUG: Concurrency Semaphore {concurrencySemaphore.CurrentCount} / {Options.MaxConcurrency}");
+
+                                    var t = Task.Run(async () =>
+                                    {
+                                        try
+                                        {
+                                            await DownloadAsync(fileSyncInfo.FileName);
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            WriteMessage(e.Message, ConsoleColor.Red);
+                                        }
+                                        finally
+                                        {
+                                            //WriteMessage($"DEBUG: Release concurrencySemaphore", ConsoleColor.DarkYellow);
+                                            concurrencySemaphore.Release();
+                                        }
+                                    });
+
+                                    WriteMessage($"Added {fileSyncInfo.FileName} ({fileSyncInfo.Length} bytes) to download tasks.");
+                                    downloadTask.Add(t);
+                                }
+
+                                await Task.WhenAll(downloadTask);
                             }
-                            await Task.WhenAll(downloadTask);
                         }
                     }
                     else
                     {
-                        Console.WriteLine($"No new files need to be downloaded.");
+                        WriteMessage("No new files need to be downloaded.");
                     }
 
                     // 5. Ask Delete Old Files
@@ -155,7 +183,7 @@ namespace Edi.AzureBlobSync
                             Console.WriteLine();
                             if (k2.Key == ConsoleKey.Y)
                             {
-                                Console.WriteLine("Deleting local redundancy files...");
+                                WriteMessage("Deleting local redundancy files...");
                                 foreach (var fi in localExcepts)
                                 {
                                     File.Delete(Path.Combine(Options.LocalFolderPath, fi.FileName));
@@ -165,7 +193,7 @@ namespace Edi.AzureBlobSync
                         }
                     }
 
-                    Console.WriteLine("----------------------------------------------------");
+                    WriteMessage("----------------------------------------------------");
                     WriteMessage($"Local Files Up to Date. {excepts.Count} new file(s) downloaded, {deleteCount} file(s) deleted.", ConsoleColor.Green);
                     Console.ReadLine();
                 }
