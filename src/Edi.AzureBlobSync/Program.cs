@@ -61,103 +61,134 @@ namespace Edi.AzureBlobSync
 
                 // 1. Get Azure Blob Files
                 Console.WriteLine("Finding Files on Azure Blob Storage...");
+
                 BlobContainer = GetBlobContainer();
-                var blobs = await BlobContainer.ListBlobsSegmentedAsync(null);
-                var cloudFiles = (from item in blobs.Results
-                                  where item.GetType() == typeof(CloudBlockBlob)
-                                  select (CloudBlockBlob)item
-                                  into blob
-                                  select new FileSyncInfo()
-                                  {
-                                      FileName = blob.Name,
-                                      Length = blob.Properties.Length
-                                  }).ToList();
-
-                Console.WriteLine($"{cloudFiles.Count} cloud file(s) found.");
-
-                // 2. Get Local Files
-                if (!Directory.Exists(Options.LocalFolderPath))
+                if (null == BlobContainer)
                 {
-                    Directory.CreateDirectory(Options.LocalFolderPath);
+                    WriteMessage("ERROR: Can not get BlobContainer.", ConsoleColor.Red);
+                    Console.ReadKey();
+                    return;
                 }
 
-                var localFilePaths = Directory.GetFiles(Options.LocalFolderPath);
-                var localFiles = localFilePaths.Select(filePath => new FileInfo(filePath))
-                                               .Select(fi => new FileSyncInfo
-                                               {
-                                                   FileName = fi.Name,
-                                                   Length = fi.Length,
-                                               })
-                                               .ToList();
-
-                Console.WriteLine($"{localFiles.Count} local file(s) found.");
-
-                // 3. Compare Files
-                Console.WriteLine($"Comparing file meta data...");
-                Console.WriteLine("----------------------------------------------------");
-
-                // Files in cloud but not in local
-                var excepts = cloudFiles.Except(localFiles).ToList();
-                if (excepts.Any())
+                try
                 {
-                    Console.WriteLine($"{excepts.Count} new file(s) to download. [ENTER] to continue, other key to cancel.");
-                    var k = Console.ReadKey();
-                    Console.WriteLine();
-                    if (k.Key == ConsoleKey.Enter)
-                    {
-                        // Download New Files
-                        var downloadTask = new List<Task>();
-                        foreach (var fileSyncInfo in excepts)
+                    var blobs = await BlobContainer.ListBlobsSegmentedAsync(null);
+                    var cloudFiles = (from item in blobs.Results
+                        where item.GetType() == typeof(CloudBlockBlob)
+                        select (CloudBlockBlob)item
+                        into blob
+                        select new FileSyncInfo()
                         {
-                            Console.WriteLine($"Added {fileSyncInfo.FileName} ({fileSyncInfo.Length} bytes) to download.");
-                            downloadTask.Add(DownloadAsync(fileSyncInfo.FileName));
-                        }
-                        await Task.WhenAll(downloadTask);
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"No new files need to be downloaded.");
-                }
+                            FileName = blob.Name,
+                            Length = blob.Properties.Length
+                        }).ToList();
 
-                // 5. Ask Delete Old Files
-                var localExcepts = localFiles.Except(cloudFiles).ToList();
-                var deleteCount = 0;
-                if (localExcepts.Any())
-                {
-                    Console.WriteLine($"{localExcepts.Count} redundancy file(s) exists in local but not on cloud, [V] to view file list, [ENTER] to continue.");
-                    var k = Console.ReadKey();
-                    Console.WriteLine();
-                    if (k.Key == ConsoleKey.V)
+                    Console.WriteLine($"{cloudFiles.Count} cloud file(s) found.");
+
+                    // 2. Get Local Files
+                    if (!Directory.Exists(Options.LocalFolderPath))
                     {
-                        foreach (var f in localExcepts)
-                        {
-                            Console.WriteLine($"{f.FileName}\t{f.Length} bytes");
-                        }
+                        Directory.CreateDirectory(Options.LocalFolderPath);
                     }
 
-                    var k1 = Console.ReadKey();
-                    Console.WriteLine();
-                    if (k1.Key == ConsoleKey.Enter)
+                    var localFilePaths = Directory.GetFiles(Options.LocalFolderPath);
+                    var localFiles = localFilePaths.Select(filePath => new FileInfo(filePath))
+                                                   .Select(fi => new FileSyncInfo
+                                                   {
+                                                       FileName = fi.Name,
+                                                       Length = fi.Length,
+                                                   })
+                                                   .ToList();
+
+                    Console.WriteLine($"{localFiles.Count} local file(s) found.");
+
+                    // 3. Compare Files
+                    Console.WriteLine($"Comparing file meta data...");
+                    Console.WriteLine("----------------------------------------------------");
+
+                    // Files in cloud but not in local
+                    var excepts = cloudFiles.Except(localFiles).ToList();
+                    if (excepts.Any())
                     {
-                        Console.WriteLine($"Do you want to delete these files? [Y/N]");
-                        var k2 = Console.ReadKey();
+                        WriteMessage($"{excepts.Count} new file(s) to download. [ENTER] to continue, other key to cancel.", ConsoleColor.Yellow);
+                        var k = Console.ReadKey();
                         Console.WriteLine();
-                        if (k2.Key == ConsoleKey.Y)
+                        if (k.Key == ConsoleKey.Enter)
                         {
-                            Console.WriteLine("Deleting local redundancy files...");
-                            foreach (var fi in localExcepts)
+                            // Download New Files
+                            var downloadTask = new List<Task>();
+                            foreach (var fileSyncInfo in excepts)
                             {
-                                File.Delete(Path.Combine(Options.LocalFolderPath, fi.FileName));
-                                deleteCount++;
+                                Console.WriteLine($"Added {fileSyncInfo.FileName} ({fileSyncInfo.Length} bytes) to download.");
+                                downloadTask.Add(DownloadAsync(fileSyncInfo.FileName));
+                            }
+                            await Task.WhenAll(downloadTask);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"No new files need to be downloaded.");
+                    }
+
+                    // 5. Ask Delete Old Files
+                    var localExcepts = localFiles.Except(cloudFiles).ToList();
+                    var deleteCount = 0;
+                    if (localExcepts.Any())
+                    {
+                        WriteMessage($"{localExcepts.Count} redundancy file(s) exists in local but not on cloud, [V] to view file list, [ENTER] to continue.", ConsoleColor.Yellow);
+                        var k = Console.ReadKey();
+                        Console.WriteLine();
+                        if (k.Key == ConsoleKey.V)
+                        {
+                            foreach (var f in localExcepts)
+                            {
+                                Console.WriteLine($"{f.FileName}\t{f.Length} bytes");
+                            }
+                        }
+
+                        var k1 = Console.ReadKey();
+                        Console.WriteLine();
+                        if (k1.Key == ConsoleKey.Enter)
+                        {
+                            WriteMessage($"Do you want to delete these files? [Y/N]", ConsoleColor.Yellow);
+                            var k2 = Console.ReadKey();
+                            Console.WriteLine();
+                            if (k2.Key == ConsoleKey.Y)
+                            {
+                                Console.WriteLine("Deleting local redundancy files...");
+                                foreach (var fi in localExcepts)
+                                {
+                                    File.Delete(Path.Combine(Options.LocalFolderPath, fi.FileName));
+                                    deleteCount++;
+                                }
                             }
                         }
                     }
-                }
 
-                Console.WriteLine("----------------------------------------------------");
-                Console.WriteLine($"Local Files Up to Date. {excepts.Count} new file(s) downloaded, {deleteCount} file(s) deleted.");
-                Console.ReadLine();
+                    Console.WriteLine("----------------------------------------------------");
+                    WriteMessage($"Local Files Up to Date. {excepts.Count} new file(s) downloaded, {deleteCount} file(s) deleted.", ConsoleColor.Green);
+                    Console.ReadLine();
+                }
+                catch (Exception e)
+                {
+                    WriteMessage(e.Message, ConsoleColor.Red);
+                }
+            }
+            else
+            {
+                WriteMessage("ERROR: Failed to parse console parameters.", ConsoleColor.Red);
+            }
+
+            Console.ReadKey();
+        }
+
+        private static void WriteMessage(string message, ConsoleColor color = ConsoleColor.White, bool resetColor = true)
+        {
+            Console.ForegroundColor = color;
+            Console.WriteLine(message);
+            if (resetColor)
+            {
+                Console.ResetColor();
             }
         }
 
