@@ -64,7 +64,7 @@ namespace Edi.AzureBlobSync
             if (parserResult.Tag == ParserResultType.Parsed)
             {
                 Options = ((Parsed<Options>)parserResult).Value;
-                var appVersion = typeof(Program).Assembly.GetName().Version;
+                var appVersion = Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
                 WriteMessage("-------------------------------------------------");
                 WriteMessage($" Edi.AzureBlobSync {appVersion}");
                 WriteMessage($" OS Version: {Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment.OperatingSystemVersion}");
