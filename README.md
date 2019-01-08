@@ -1,6 +1,8 @@
 # Azure-Blob-Backup
 Backup files in Azure Blob Storage to local file system.
 
+[![Build status](https://dev.azure.com/ediwang/EdiWang-GitHub-Builds/_apis/build/status/Azure-Blob-Backup-CI)](https://dev.azure.com/ediwang/EdiWang-GitHub-Builds/_build/latest?definitionId=-1)
+
 ## Usage
 
 ### Parameters
