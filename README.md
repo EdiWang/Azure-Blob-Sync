@@ -1,7 +1,13 @@
 # Azure-Blob-Backup
-Backup files in Azure Blob Storage to local file system.
+.NET Core Tool for Backup files in Azure Blob Storage to local file system.
 
 [![Build status](https://dev.azure.com/ediwang/EdiWang-GitHub-Builds/_apis/build/status/Azure-Blob-Backup-CI)](https://dev.azure.com/ediwang/EdiWang-GitHub-Builds/_build/latest?definitionId=-1)
+
+## Install
+
+```
+dotnet tool install --global edi.azureblobsync
+```
 
 ## Usage
 
