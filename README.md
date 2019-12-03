@@ -14,18 +14,11 @@ dotnet tool install --global edi.azureblobsync
 ### Parameters
 
 ```
--n           Required. Storage Account Name
--k           Required. Storage Account Key
+-s           Required. Connection String
 -c           Required. Blob Container Name
 -p           Required. (Default: C:\AzureBlobSyncTemp) Local Folder Path
 --help       Display this help screen.
 --version    Display version information.
 ```
-
-### Example
-
-`
--n editeststorage -k TRVxchJaH+UX/FAjeqs2+SGosPQ0lZ82DxNpuc2BESn31gugx3fN3uHcP0WAfiD97CPN8AWP5Jpji9Kx5HoX+A== -c abstest -p C:\AzureBlobSyncTarget
-`
 
 ![image](https://raw.githubusercontent.com/EdiWang/Azure-Blob-Backup/master/screenshots/sc1.png)
