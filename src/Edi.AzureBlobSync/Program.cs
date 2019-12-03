@@ -5,20 +5,15 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Azure.Storage.Blobs;
 using CommandLine;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Auth;
-using Microsoft.Azure.Storage.Blob;
 
 namespace Edi.AzureBlobSync
 {
     class Options
     {
-        [Option('n', Required = true, HelpText = "Storage Account Name")]
-        public string AccountName { get; set; }
-
-        [Option('k', Required = true, HelpText = "Storage Account Key")]
-        public string AccountKey { get; set; }
+        [Option('s', Required = true, HelpText = "Storage Account Connection String")]
+        public string ConnectionString { get; set; }
 
         [Option('c', Required = true, HelpText = "Blob Container Name")]
         public string ContainerName { get; set; }
@@ -34,7 +29,7 @@ namespace Edi.AzureBlobSync
     {
         public string FileName { get; set; }
 
-        public long Length { get; set; }
+        public long? Length { get; set; }
 
         public override bool Equals(object obj)
         {
@@ -47,6 +42,9 @@ namespace Edi.AzureBlobSync
 
         public override int GetHashCode()
         {
+            // Seems wrong implementation of GetHashCode()
+            // But why I wrote this method in the first place?
+            // Emmmmmm... who cares anyway
             return $"{FileName}{Length}".Length;
         }
     }
@@ -55,7 +53,7 @@ namespace Edi.AzureBlobSync
     {
         public static Options Options { get; set; }
 
-        public static CloudBlobContainer BlobContainer { get; set; }
+        public static BlobContainerClient BlobContainer { get; set; }
 
         public static async Task Main(string[] args)
         {
@@ -69,7 +67,6 @@ namespace Edi.AzureBlobSync
                 WriteMessage($" OS Version: {Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment.OperatingSystemVersion}");
                 WriteMessage("-------------------------------------------------");
                 Console.WriteLine();
-                WriteMessage($"Account Name: {Options.AccountName}", ConsoleColor.DarkCyan);
                 WriteMessage($"Container Name: {Options.ContainerName}", ConsoleColor.DarkCyan);
                 WriteMessage($"Download Threads: {Options.MaxConcurrency}", ConsoleColor.DarkCyan);
                 WriteMessage($"Local Path: {Options.LocalFolderPath}", ConsoleColor.DarkCyan);
@@ -88,16 +85,16 @@ namespace Edi.AzureBlobSync
 
                 try
                 {
-                    var blobs = await BlobContainer.ListBlobsSegmentedAsync(null);
-                    var cloudFiles = (from item in blobs.Results
-                                      where item.GetType() == typeof(CloudBlockBlob)
-                                      select (CloudBlockBlob)item
-                        into blob
-                                      select new FileSyncInfo()
-                                      {
-                                          FileName = blob.Name,
-                                          Length = blob.Properties.Length
-                                      }).ToList();
+                    var cloudFiles = new List<FileSyncInfo>();
+                    await foreach (var blobItem in BlobContainer.GetBlobsAsync())
+                    {
+                        var fsi = new FileSyncInfo
+                        {
+                            FileName = blobItem.Name,
+                            Length = blobItem.Properties.ContentLength
+                        };
+                        cloudFiles.Add(fsi);
+                    }
 
                     WriteMessage($"{cloudFiles.Count} cloud file(s) found.", ConsoleColor.DarkGreen);
 
@@ -131,37 +128,35 @@ namespace Edi.AzureBlobSync
                         if (k.Key == ConsoleKey.Enter)
                         {
                             // Download New Files
-                            using (var concurrencySemaphore = new SemaphoreSlim(Options.MaxConcurrency))
+                            using var concurrencySemaphore = new SemaphoreSlim(Options.MaxConcurrency);
+                            var downloadTask = new List<Task>();
+                            foreach (var fileSyncInfo in excepts)
                             {
-                                var downloadTask = new List<Task>();
-                                foreach (var fileSyncInfo in excepts)
+                                concurrencySemaphore.Wait();
+                                //WriteMessage($"DEBUG: Concurrency Semaphore {concurrencySemaphore.CurrentCount} / {Options.MaxConcurrency}");
+
+                                var t = Task.Run(async () =>
                                 {
-                                    concurrencySemaphore.Wait();
-                                    //WriteMessage($"DEBUG: Concurrency Semaphore {concurrencySemaphore.CurrentCount} / {Options.MaxConcurrency}");
-
-                                    var t = Task.Run(async () =>
+                                    try
                                     {
-                                        try
-                                        {
-                                            await DownloadAsync(fileSyncInfo.FileName);
-                                        }
-                                        catch (Exception e)
-                                        {
-                                            WriteMessage(e.Message, ConsoleColor.Red);
-                                        }
-                                        finally
-                                        {
-                                            //WriteMessage($"DEBUG: Release concurrencySemaphore", ConsoleColor.DarkYellow);
-                                            concurrencySemaphore.Release();
-                                        }
-                                    });
+                                        await DownloadAsync(fileSyncInfo.FileName);
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        WriteMessage(e.Message, ConsoleColor.Red);
+                                    }
+                                    finally
+                                    {
+                                        //WriteMessage($"DEBUG: Release concurrencySemaphore", ConsoleColor.DarkYellow);
+                                        concurrencySemaphore.Release();
+                                    }
+                                });
 
-                                    // WriteMessage($"DEBUG: Added {fileSyncInfo.FileName} ({fileSyncInfo.Length} bytes) to download tasks.", ConsoleColor.DarkYellow);
-                                    downloadTask.Add(t);
-                                }
-
-                                await Task.WhenAll(downloadTask);
+                                // WriteMessage($"DEBUG: Added {fileSyncInfo.FileName} ({fileSyncInfo.Length} bytes) to download tasks.", ConsoleColor.DarkYellow);
+                                downloadTask.Add(t);
                             }
+
+                            await Task.WhenAll(downloadTask);
                         }
                     }
                     else
@@ -227,23 +222,25 @@ namespace Edi.AzureBlobSync
             Console.WriteLine(message);
             if (resetColor)
             {
+                // Why some items showing default console color while most items works fine (white) in DownloadAsync()...
+                // Isn't this thread safe?
+                // Who cares anyway...
                 Console.ResetColor();
             }
         }
 
         private static async Task DownloadAsync(string remoteFileName)
         {
-            CloudBlockBlob blockBlob = BlobContainer.GetBlockBlobReference(remoteFileName);
+            // new a BlobClient every time seems stupid...
+            var client = new BlobClient(Options.ConnectionString, Options.ContainerName, remoteFileName);
             var newFilePath = Path.Combine(Options.LocalFolderPath, remoteFileName);
-            await blockBlob.DownloadToFileAsync(newFilePath, FileMode.Create);
+            await client.DownloadToAsync(newFilePath);
             WriteMessage($"[{DateTime.Now}] downloaded {remoteFileName}.");
         }
 
-        private static CloudBlobContainer GetBlobContainer()
+        private static BlobContainerClient GetBlobContainer()
         {
-            CloudStorageAccount storageAccount = new CloudStorageAccount(new StorageCredentials(Options.AccountName, Options.AccountKey), true);
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            CloudBlobContainer container = blobClient.GetContainerReference(Options.ContainerName);
+            var container = new BlobContainerClient(Options.ConnectionString, Options.ContainerName);
             return container;
         }
     }
