@@ -5,12 +5,12 @@ VisualStudioVersion = 16.0.29519.87
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Edi.AzureBlobSync", "Edi.AzureBlobSync\Edi.AzureBlobSync.csproj", "{18B47410-2979-4BF9-BC95-54E7D504E1A3}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{05216DF2-84D5-4466-9CB1-84BE92630F22}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{7D0CFC33-E30A-4729-AE9E-E45B008E5AEA}"
 	ProjectSection(SolutionItems) = preProject
-		..\..\.gitattributes = ..\..\.gitattributes
-		..\..\.gitignore = ..\..\.gitignore
-		..\..\LICENSE = ..\..\LICENSE
-		..\..\README.md = ..\..\README.md
+		..\.gitattributes = ..\.gitattributes
+		..\.gitignore = ..\.gitignore
+		..\LICENSE = ..\LICENSE
+		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
 Global

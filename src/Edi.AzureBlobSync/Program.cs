@@ -132,7 +132,7 @@ namespace Edi.AzureBlobSync
                             var downloadTask = new List<Task>();
                             foreach (var fileSyncInfo in excepts)
                             {
-                                concurrencySemaphore.Wait();
+                                await concurrencySemaphore.WaitAsync();
                                 //WriteMessage($"DEBUG: Concurrency Semaphore {concurrencySemaphore.CurrentCount} / {Options.MaxConcurrency}");
 
                                 var t = Task.Run(async () =>
