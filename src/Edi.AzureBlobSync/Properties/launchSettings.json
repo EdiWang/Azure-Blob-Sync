@@ -2,7 +2,7 @@
   "profiles": {
     "Edi.AzureBlobSync": {
       "commandName": "Project",
-      "commandLineArgs": "-s \"DefaultEndpointsProtocol=https;AccountName=ediwangstorage;AccountKey=YYgUjlP/xjYwdALo3QI+9bftQUqBixDOH59L3Ll0qN9SCrSo3BnHhJNSI86MO0X2C3dyceR94K7L/LnIr+2BOQ==;EndpointSuffix=core.windows.net\" -c \"ediwang-images\" -p \"D:\\OneDrive\\Projects\\Moonglade\\AzureImageStorageBackup\""
+      "commandLineArgs": "-s \"\" -c \"\" -p \"\""
     }
   }
 }
