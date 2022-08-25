@@ -3,9 +3,9 @@
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
 		<TargetFramework>net6.0</TargetFramework>
-		<AssemblyVersion>1.9.3.0</AssemblyVersion>
-		<FileVersion>1.9.3.0</FileVersion>
-		<Version>1.9.3.0</Version>
+		<AssemblyVersion>1.9.4.0</AssemblyVersion>
+		<FileVersion>1.9.4.0</FileVersion>
+		<Version>1.9.4.0</Version>
 		<PackAsTool>true</PackAsTool>
 		<ToolCommandName>azureblobsync</ToolCommandName>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
