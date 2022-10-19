@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using Azure.Storage.Blobs;
 using CommandLine;
+using Spectre.Console;
 
 namespace Edi.AzureBlobSync;
 
@@ -56,39 +57,47 @@ class Program
         {
             Options = ((Parsed<Options>)parserResult).Value;
             var appVersion = Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
-            WriteMessage("-------------------------------------------------");
-            WriteMessage($" Edi.AzureBlobSync {appVersion}");
-            WriteMessage($" OS Version: {Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment.OperatingSystemVersion}");
-            WriteMessage("-------------------------------------------------");
-            Console.WriteLine();
-            WriteMessage($"Container Name: {Options.ContainerName}", ConsoleColor.DarkCyan);
-            WriteMessage($"Download Threads: {Options.MaxConcurrency}", ConsoleColor.DarkCyan);
-            WriteMessage($"Local Path: {Options.LocalFolderPath}", ConsoleColor.DarkCyan);
-            Console.WriteLine();
 
-            // 1. Get Azure Blob Files
-            WriteMessage($"[{DateTime.Now}] Finding Files on Azure Blob Storage...");
-
-            BlobContainer = GetBlobContainer();
-            if (null == BlobContainer)
+            var panel = new Panel($"Tool version: {appVersion}\nOS version: {Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment.OperatingSystemVersion}")
             {
-                WriteMessage("ERROR: Can not get BlobContainer.", ConsoleColor.Red);
-                Console.ReadKey();
-                return;
-            }
+                Header = new("Edi.AzureBlobSync"),
+                Border = BoxBorder.Square
+            };
+
+            AnsiConsole.Write(panel);
+
+            var table = new Table();
+
+            table.AddColumn("Parameter");
+            table.AddColumn("Value");
+
+            table.AddRow(new Markup("[blue]Container Name[/]"), new Text(Options.ContainerName));
+            table.AddRow(new Markup("[blue]Download Threads[/]"), new Text(Options.MaxConcurrency.ToString()));
+            table.AddRow(new Markup("[blue]Local Path[/]"), new Text(Options.LocalFolderPath));
+
+            AnsiConsole.Write(table);
+
+            if (!AnsiConsole.Confirm("Good to go?")) return;
 
             try
             {
+                // 1. Get Azure Blob Files
+                BlobContainer = GetBlobContainer();
+                
                 var cloudFiles = new List<FileSyncInfo>();
-                await foreach (var blobItem in BlobContainer.GetBlobsAsync())
-                {
-                    var fsi = new FileSyncInfo
+                await AnsiConsole.Status()
+                    .Start("Finding Files on Azure Blob Storage...", async ctx =>
                     {
-                        FileName = blobItem.Name,
-                        Length = blobItem.Properties.ContentLength
-                    };
-                    cloudFiles.Add(fsi);
-                }
+                        await foreach (var blobItem in BlobContainer.GetBlobsAsync())
+                        {
+                            var fsi = new FileSyncInfo
+                            {
+                                FileName = blobItem.Name,
+                                Length = blobItem.Properties.ContentLength
+                            };
+                            cloudFiles.Add(fsi);
+                        }
+                    });
 
                 WriteMessage($"{cloudFiles.Count} cloud file(s) found.", ConsoleColor.DarkGreen);
 
@@ -116,10 +125,7 @@ class Program
                 var excepts = cloudFiles.Except(localFiles).ToList();
                 if (excepts.Any())
                 {
-                    WriteMessage($"{excepts.Count} new file(s) to download. [ENTER] to continue, other key to cancel.", ConsoleColor.DarkYellow);
-                    var k = Console.ReadKey();
-                    Console.WriteLine();
-                    if (k.Key == ConsoleKey.Enter)
+                    if (AnsiConsole.Confirm($"[green]{excepts.Count}[/] new file(s) to download. Continue?"))
                     {
                         // Download New Files
                         using var concurrencySemaphore = new SemaphoreSlim(Options.MaxConcurrency);
@@ -178,10 +184,7 @@ class Program
                     Console.WriteLine();
                     if (k1.Key == ConsoleKey.Enter)
                     {
-                        WriteMessage($"Do you want to delete these files? [Y/N]", ConsoleColor.DarkYellow);
-                        var k2 = Console.ReadKey();
-                        Console.WriteLine();
-                        if (k2.Key == ConsoleKey.Y)
+                        if (AnsiConsole.Confirm("[yellow]Do you want to delete these files?[/]"))
                         {
                             WriteMessage("Deleting local redundancy files...");
                             foreach (var fi in localExcepts)
@@ -198,12 +201,12 @@ class Program
             }
             catch (Exception e)
             {
-                WriteMessage(e.Message, ConsoleColor.Red);
+                AnsiConsole.WriteException(e);
             }
         }
         else
         {
-            WriteMessage("ERROR: Failed to parse console parameters.", ConsoleColor.Red);
+            AnsiConsole.Write(new Markup("[red]ERROR: Failed to parse console parameters.[/]"));
         }
 
         Console.ReadKey();
