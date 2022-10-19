@@ -21,4 +21,4 @@ dotnet tool install --global edi.azureblobsync
 --version    Display version information.
 ```
 
-![image](https://raw.githubusercontent.com/EdiWang/Azure-Blob-Backup/master/screenshots/sc1.png)
+![image](https://raw.githubusercontent.com/EdiWang/Azure-Blob-Backup/master/screenshots/sc2.png)
