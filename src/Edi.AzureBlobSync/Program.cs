@@ -86,7 +86,7 @@ class Program
                 
                 var cloudFiles = new List<FileSyncInfo>();
                 await AnsiConsole.Status()
-                    .Start("Finding Files on Azure Blob Storage...", async ctx =>
+                    .StartAsync("Finding Files on Azure Blob Storage...", async ctx =>
                     {
                         await foreach (var blobItem in BlobContainer.GetBlobsAsync())
                         {
@@ -99,7 +99,7 @@ class Program
                         }
                     });
 
-                WriteMessage($"{cloudFiles.Count} cloud file(s) found.", ConsoleColor.DarkGreen);
+                AnsiConsole.Write(new Markup($"[green]{cloudFiles.Count}[/] cloud file(s) found.\n"));
 
                 // 2. Get Local Files
                 if (!Directory.Exists(Options.LocalFolderPath))
@@ -116,10 +116,10 @@ class Program
                     })
                     .ToList();
 
-                WriteMessage($"{localFiles.Count} local file(s) found.", ConsoleColor.DarkGreen);
+                AnsiConsole.Write(new Markup($"[green]{localFiles.Count}[/] local file(s) found.\n"));
 
                 // 3. Compare Files
-                WriteMessage("Comparing file meta data...");
+                AnsiConsole.WriteLine("Comparing file meta data...");
 
                 // Files in cloud but not in local
                 var excepts = cloudFiles.Except(localFiles).ToList();
@@ -143,7 +143,7 @@ class Program
                                 }
                                 catch (Exception e)
                                 {
-                                    WriteMessage(e.Message, ConsoleColor.Red);
+                                    AnsiConsole.WriteException(e);
                                 }
                                 finally
                                 {
@@ -158,10 +158,14 @@ class Program
 
                         await Task.WhenAll(downloadTask);
                     }
+                    else
+                    {
+                        excepts.Clear();
+                    }
                 }
                 else
                 {
-                    WriteMessage("No new files need to be downloaded.");
+                    AnsiConsole.WriteLine("No new files need to be downloaded.");
                 }
 
                 // 5. Ask Delete Old Files
@@ -169,24 +173,30 @@ class Program
                 var deleteCount = 0;
                 if (localExcepts.Any())
                 {
-                    WriteMessage($"{localExcepts.Count} redundancy file(s) exists in local but not on cloud, [V] to view file list, [ENTER] to continue.", ConsoleColor.DarkYellow);
+                    AnsiConsole.Write(new Markup($"[yellow]{localExcepts.Count}[/] redundancy file(s) exists in local but not on cloud, [[V]] to view file list, [[ENTER]] to continue."));
                     var k = Console.ReadKey();
                     Console.WriteLine();
                     if (k.Key == ConsoleKey.V)
                     {
+                        var localExceptsTable = new Table();
+
+                        localExceptsTable.AddColumn("File Name");
+                        localExceptsTable.AddColumn("Length (bytes)");
+
                         foreach (var f in localExcepts)
                         {
-                            Console.WriteLine($"{f.FileName}\t{f.Length} bytes");
+                            localExceptsTable.AddRow(f.FileName, f.Length.ToString());
                         }
+
+                        AnsiConsole.Write(localExceptsTable);
                     }
 
-                    var k1 = Console.ReadKey();
-                    Console.WriteLine();
-                    if (k1.Key == ConsoleKey.Enter)
+                    var k2 = Console.ReadKey();
+                    if (k2.Key == ConsoleKey.Enter)
                     {
                         if (AnsiConsole.Confirm("[yellow]Do you want to delete these files?[/]"))
                         {
-                            WriteMessage("Deleting local redundancy files...");
+                            AnsiConsole.WriteLine("Deleting local redundancy files...");
                             foreach (var fi in localExcepts)
                             {
                                 File.Delete(Path.Combine(Options.LocalFolderPath, fi.FileName));
@@ -196,8 +206,8 @@ class Program
                     }
                 }
 
-                WriteMessage("----------------------------------------------------");
-                WriteMessage($"Local Files Up to Date. {excepts.Count} new file(s) downloaded, {deleteCount} file(s) deleted.", ConsoleColor.Green);
+                AnsiConsole.WriteLine("----------------------------------------------------");
+                AnsiConsole.Write(new Markup($"Local Files Up to Date. [green]{excepts.Count}[/] new file(s) downloaded, [yellow]{deleteCount}[/] file(s) deleted."));
             }
             catch (Exception e)
             {
@@ -212,26 +222,13 @@ class Program
         Console.ReadKey();
     }
 
-    private static void WriteMessage(string message, ConsoleColor color = ConsoleColor.White, bool resetColor = true)
-    {
-        Console.ForegroundColor = color;
-        Console.WriteLine(message);
-        if (resetColor)
-        {
-            // Why some items showing default console color while most items works fine (white) in DownloadAsync()...
-            // Isn't this thread safe?
-            // Who cares anyway...
-            Console.ResetColor();
-        }
-    }
-
     private static async Task DownloadAsync(string remoteFileName)
     {
         // new a BlobClient every time seems stupid...
         var client = new BlobClient(Options.ConnectionString, Options.ContainerName, remoteFileName);
         var newFilePath = Path.Combine(Options.LocalFolderPath, remoteFileName);
         await client.DownloadToAsync(newFilePath);
-        WriteMessage($"[{DateTime.Now}] downloaded {remoteFileName}.");
+        AnsiConsole.Write($"[{DateTime.Now}] downloaded {remoteFileName}.\n");
     }
 
     private static BlobContainerClient GetBlobContainer()
