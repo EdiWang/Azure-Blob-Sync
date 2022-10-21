@@ -2,7 +2,7 @@
   "profiles": {
     "Edi.AzureBlobSync": {
       "commandName": "Project",
-      "commandLineArgs": "-s \"\" -c \"\" -p \"\""
+      "commandLineArgs": "--connection \"DefaultEndpointsProtocol=https;AccountName=mpsledgerstorage;AccountKey=qUv+j/jDbUn/hOFZbUS8cGubAJl8WZJDOJm0Ta96TYSB0LRMjOEqfnGpfipyNzhcbRdG8JBmsOX2NQRGNRscxA==;EndpointSuffix=core.windows.net\" --container \"attachments\" --path \"D:\\OneDrive - 251 Today\\Side Job\\MPS\\Backup\\attachments\" --silence true"
     }
   }
 }

@@ -7,17 +7,20 @@ namespace Edi.AzureBlobSync;
 
 internal class Options
 {
-    [Option('s', Required = true, HelpText = "Storage Account Connection String")]
+    [Option(longName: "connection", Required = true, HelpText = "Storage Account Connection String")]
     public string ConnectionString { get; set; }
 
-    [Option('c', Required = true, HelpText = "Blob Container Name")]
-    public string ContainerName { get; set; }
+    [Option(longName: "container", Required = true, HelpText = "Blob Container Name")]
+    public string Container { get; set; }
 
-    [Option('p', Default = "C:\\AzureBlobSyncTemp", Required = true, HelpText = "Local Folder Path")]
-    public string LocalFolderPath { get; set; }
+    [Option(longName: "path", Default = "C:\\AzureBlobSyncTemp", Required = true, HelpText = "Local Folder Path")]
+    public string Path { get; set; }
 
-    [Option('m', Default = 10, Required = false, HelpText = "Download threads")]
-    public int MaxConcurrency { get; set; }
+    [Option(longName: "threads", Default = 10, Required = false, HelpText = "Download threads")]
+    public int Threads { get; set; }
+
+    [Option(longName: "silence", Default = false, Required = false, HelpText = "Silence mode")]
+    public bool Silence { get; set; }
 }
 
 internal class FileSyncInfo
@@ -56,37 +59,21 @@ class Program
         if (parserResult.Tag == ParserResultType.Parsed)
         {
             Options = ((Parsed<Options>)parserResult).Value;
-            var appVersion = Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
+            WriteParameterTable();
 
-            var panel = new Panel($"Tool version: {appVersion}\nOS version: {Microsoft.DotNet.PlatformAbstractions.RuntimeEnvironment.OperatingSystemVersion}")
+            if (!Options.Silence)
             {
-                Header = new("Edi.AzureBlobSync"),
-                Border = BoxBorder.Square
-            };
-
-            AnsiConsole.Write(panel);
-
-            var table = new Table();
-
-            table.AddColumn("Parameter");
-            table.AddColumn("Value");
-
-            table.AddRow(new Markup("[blue]Container Name[/]"), new Text(Options.ContainerName));
-            table.AddRow(new Markup("[blue]Download Threads[/]"), new Text(Options.MaxConcurrency.ToString()));
-            table.AddRow(new Markup("[blue]Local Path[/]"), new Text(Options.LocalFolderPath));
-
-            AnsiConsole.Write(table);
-
-            if (!AnsiConsole.Confirm("Good to go?")) return;
+                if (!AnsiConsole.Confirm("Good to go?")) return;
+            }
 
             try
             {
                 // 1. Get Azure Blob Files
                 BlobContainer = GetBlobContainer();
-                
+
                 var cloudFiles = new List<FileSyncInfo>();
                 await AnsiConsole.Status()
-                    .StartAsync("Finding Files on Azure Blob Storage...", async ctx =>
+                    .StartAsync("Finding files on Azure Storage...", async _ =>
                     {
                         await foreach (var blobItem in BlobContainer.GetBlobsAsync())
                         {
@@ -99,15 +86,15 @@ class Program
                         }
                     });
 
-                AnsiConsole.Write(new Markup($"[green]{cloudFiles.Count}[/] cloud file(s) found.\n"));
+                AnsiConsole.Write(new Markup($"[green]{cloudFiles.Count}[/] cloud file{(cloudFiles.Count > 0 ? "s" : string.Empty)} found.\n"));
 
                 // 2. Get Local Files
-                if (!Directory.Exists(Options.LocalFolderPath))
+                if (!Directory.Exists(Options.Path))
                 {
-                    Directory.CreateDirectory(Options.LocalFolderPath);
+                    Directory.CreateDirectory(Options.Path);
                 }
 
-                var localFilePaths = Directory.GetFiles(Options.LocalFolderPath);
+                var localFilePaths = Directory.GetFiles(Options.Path);
                 var localFiles = localFilePaths.Select(filePath => new FileInfo(filePath))
                     .Select(fi => new FileSyncInfo
                     {
@@ -125,38 +112,9 @@ class Program
                 var excepts = cloudFiles.Except(localFiles).ToList();
                 if (excepts.Any())
                 {
-                    if (AnsiConsole.Confirm($"[green]{excepts.Count}[/] new file(s) to download. Continue?"))
+                    if (Options.Silence || AnsiConsole.Confirm($"[green]{excepts.Count}[/] new file(s) to download. Continue?"))
                     {
-                        // Download New Files
-                        using var concurrencySemaphore = new SemaphoreSlim(Options.MaxConcurrency);
-                        var downloadTask = new List<Task>();
-                        foreach (var fileSyncInfo in excepts)
-                        {
-                            await concurrencySemaphore.WaitAsync();
-                            //WriteMessage($"DEBUG: Concurrency Semaphore {concurrencySemaphore.CurrentCount} / {Options.MaxConcurrency}");
-
-                            var t = Task.Run(async () =>
-                            {
-                                try
-                                {
-                                    await DownloadAsync(fileSyncInfo.FileName);
-                                }
-                                catch (Exception e)
-                                {
-                                    AnsiConsole.WriteException(e);
-                                }
-                                finally
-                                {
-                                    //WriteMessage($"DEBUG: Release concurrencySemaphore", ConsoleColor.DarkYellow);
-                                    concurrencySemaphore.Release();
-                                }
-                            });
-
-                            // WriteMessage($"DEBUG: Added {fileSyncInfo.FileName} ({fileSyncInfo.Length} bytes) to download tasks.", ConsoleColor.DarkYellow);
-                            downloadTask.Add(t);
-                        }
-
-                        await Task.WhenAll(downloadTask);
+                        await DownloadAll(excepts);
                     }
                     else
                     {
@@ -173,35 +131,34 @@ class Program
                 var deleteCount = 0;
                 if (localExcepts.Any())
                 {
-                    AnsiConsole.Write(new Markup($"[yellow]{localExcepts.Count}[/] redundancy file(s) exists in local but not on cloud, [[V]] to view file list, [[ENTER]] to continue."));
-                    var k = Console.ReadKey();
-                    Console.WriteLine();
-                    if (k.Key == ConsoleKey.V)
+                    if (!Options.Silence)
                     {
-                        var localExceptsTable = new Table();
+                        AnsiConsole.Write(new Markup($"[yellow]{localExcepts.Count}[/] redundancy file(s) exists in local but not on cloud, [blue][[V]][/] to view file list, [blue][[ENTER]][/] to continue.\n"));
 
-                        localExceptsTable.AddColumn("File Name");
-                        localExceptsTable.AddColumn("Length (bytes)");
-
-                        foreach (var f in localExcepts)
+                        if (Console.ReadKey().Key == ConsoleKey.V)
                         {
-                            localExceptsTable.AddRow(f.FileName, f.Length.ToString());
-                        }
+                            Console.WriteLine();
+                            var localExceptsTable = new Table();
 
-                        AnsiConsole.Write(localExceptsTable);
+                            localExceptsTable.AddColumn("File Name");
+                            localExceptsTable.AddColumn("Length (bytes)");
+
+                            foreach (var f in localExcepts)
+                            {
+                                localExceptsTable.AddRow(f.FileName, f.Length.ToString());
+                            }
+
+                            AnsiConsole.Write(localExceptsTable);
+                        }
                     }
 
-                    var k2 = Console.ReadKey();
-                    if (k2.Key == ConsoleKey.Enter)
+                    if (Options.Silence || AnsiConsole.Confirm("[yellow]Do you want to delete these files?[/]"))
                     {
-                        if (AnsiConsole.Confirm("[yellow]Do you want to delete these files?[/]"))
+                        AnsiConsole.WriteLine("Deleting local redundancy files...");
+                        foreach (var fi in localExcepts)
                         {
-                            AnsiConsole.WriteLine("Deleting local redundancy files...");
-                            foreach (var fi in localExcepts)
-                            {
-                                File.Delete(Path.Combine(Options.LocalFolderPath, fi.FileName));
-                                deleteCount++;
-                            }
+                            File.Delete(Path.Combine(Options.Path, fi.FileName));
+                            deleteCount++;
                         }
                     }
                 }
@@ -222,18 +179,64 @@ class Program
         Console.ReadKey();
     }
 
-    private static async Task DownloadAsync(string remoteFileName)
+    private static void WriteParameterTable()
+    {
+        var appVersion = Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
+        var table = new Table
+        {
+            Title = new TableTitle($"Edi.AzureBlobSync {appVersion}")
+        };
+
+        table.AddColumn("Parameter");
+        table.AddColumn("Value");
+        table.AddRow(new Markup("[blue]Container Name[/]"), new Text(Options.Container));
+        table.AddRow(new Markup("[blue]Download Threads[/]"), new Text(Options.Threads.ToString()));
+        table.AddRow(new Markup("[blue]Local Path[/]"), new Text(Options.Path));
+        AnsiConsole.Write(table);
+    }
+
+    private static async Task DownloadAll(List<FileSyncInfo> excepts)
+    {
+        using var semaphore = new SemaphoreSlim(Options.Threads);
+        var downloadTask = new List<Task>();
+        foreach (var fileSyncInfo in excepts)
+        {
+            await semaphore.WaitAsync();
+
+            var t = Task.Run(async () =>
+            {
+                try
+                {
+                    await DownloadBlob(fileSyncInfo.FileName);
+                }
+                catch (Exception e)
+                {
+                    AnsiConsole.WriteException(e);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            });
+
+            downloadTask.Add(t);
+        }
+
+        await Task.WhenAll(downloadTask);
+    }
+
+    private static async Task DownloadBlob(string remoteFileName)
     {
         // new a BlobClient every time seems stupid...
-        var client = new BlobClient(Options.ConnectionString, Options.ContainerName, remoteFileName);
-        var newFilePath = Path.Combine(Options.LocalFolderPath, remoteFileName);
+        var client = new BlobClient(Options.ConnectionString, Options.Container, remoteFileName);
+        var newFilePath = Path.Combine(Options.Path, remoteFileName);
         await client.DownloadToAsync(newFilePath);
         AnsiConsole.Write($"[{DateTime.Now}] downloaded {remoteFileName}.\n");
     }
 
     private static BlobContainerClient GetBlobContainer()
     {
-        var container = new BlobContainerClient(Options.ConnectionString, Options.ContainerName);
+        var container = new BlobContainerClient(Options.ConnectionString, Options.Container);
         return container;
     }
 }

@@ -3,16 +3,28 @@
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
 		<TargetFramework>net6.0</TargetFramework>
-		<AssemblyVersion>1.10.0.0</AssemblyVersion>
-		<FileVersion>1.10.0.0</FileVersion>
-		<Version>1.10.0.0</Version>
+		<AssemblyVersion>1.11.0.0</AssemblyVersion>
+		<FileVersion>1.11.0.0</FileVersion>
+		<Version>1.11.0.0</Version>
 		<PackAsTool>true</PackAsTool>
 		<ToolCommandName>azblobsync</ToolCommandName>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<LangVersion>latest</LangVersion>
 		<ImplicitUsings>enable</ImplicitUsings>
+		<Title>Edi.AzureBlobSync</Title>
+		<Description>.NET Tool for backup files in Azure Blob Storage to local file system.</Description>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<RepositoryUrl>https://github.com/EdiWang/Azure-Blob-Backup</RepositoryUrl>
+		<PackageTags>Azure</PackageTags>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Include="..\..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="CommandLineParser" Version="2.9.1" />
