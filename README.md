@@ -1,9 +1,13 @@
-# Azure-Blob-Backup
+# Azure Blob Sync
 .NET Tool for backup files in Azure Blob Storage to local file system.
 
-![.NET Core](https://github.com/EdiWang/Azure-Blob-Backup/workflows/.NET%20Core/badge.svg)
+![.NET](https://github.com/EdiWang/Azure-Blob-Backup/workflows/.NET%20Core/badge.svg)
 
 ## Install
+
+Prerequests: 
+
+- .NET 6.0 SDK 
 
 ```bash
 dotnet tool install --global edi.azureblobsync
