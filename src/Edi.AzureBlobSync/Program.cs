@@ -114,7 +114,11 @@ class Program
                 {
                     if (Options.Silence || AnsiConsole.Confirm($"[green]{excepts.Count}[/] new file(s) to download. Continue?"))
                     {
-                        await DownloadAll(excepts);
+                        await AnsiConsole.Status()
+                                .StartAsync($"Downloading files...", async _ =>
+                                {
+                                    await DownloadAll(excepts);
+                                });
                     }
                     else
                     {
