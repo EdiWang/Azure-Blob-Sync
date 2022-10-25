@@ -7,13 +7,13 @@ namespace Edi.AzureBlobSync;
 
 internal class Options
 {
-    [Option(longName: "connection", Required = true, HelpText = "Storage Account Connection String")]
+    [Option(longName: "connection", HelpText = "Storage Account Connection String")]
     public string ConnectionString { get; set; }
 
-    [Option(longName: "container", Required = true, HelpText = "Blob Container Name")]
+    [Option(longName: "container", HelpText = "Blob Container Name")]
     public string Container { get; set; }
 
-    [Option(longName: "path", Default = "C:\\AzureBlobSyncTemp", Required = true, HelpText = "Local Folder Path")]
+    [Option(longName: "path", HelpText = "Local Folder Path")]
     public string Path { get; set; }
 
     [Option(longName: "threads", Default = 10, Required = false, HelpText = "Download threads")]
@@ -21,30 +21,6 @@ internal class Options
 
     [Option(longName: "silence", Default = false, Required = false, HelpText = "Silence mode")]
     public bool Silence { get; set; }
-}
-
-internal class FileSyncInfo
-{
-    public string FileName { get; set; }
-
-    public long? Length { get; set; }
-
-    public override bool Equals(object obj)
-    {
-        if (obj is FileSyncInfo si)
-        {
-            return si.FileName == FileName && si.Length == Length;
-        }
-        return false;
-    }
-
-    public override int GetHashCode()
-    {
-        // Seems wrong implementation of GetHashCode()
-        // But why I wrote this method in the first place?
-        // Emmmmmm... who cares anyway
-        return $"{FileName}{Length}".Length;
-    }
 }
 
 class Program
@@ -59,6 +35,22 @@ class Program
         if (parserResult.Tag == ParserResultType.Parsed)
         {
             Options = ((Parsed<Options>)parserResult).Value;
+
+            if (string.IsNullOrWhiteSpace(Options.ConnectionString))
+            {
+                Options.ConnectionString = AnsiConsole.Ask<string>("Enter Azure Storage Account connection string: ");
+            }
+
+            if (string.IsNullOrWhiteSpace(Options.Container))
+            {
+                Options.Container = AnsiConsole.Ask<string>("Enter container name: ");
+            }
+
+            if (string.IsNullOrWhiteSpace(Options.Path))
+            {
+                Options.Path = AnsiConsole.Ask<string>("Enter local path: ");
+            }
+
             WriteParameterTable();
 
             if (!Options.Silence)
@@ -231,7 +223,6 @@ class Program
 
     private static async Task DownloadBlob(string remoteFileName)
     {
-        // new a BlobClient every time seems stupid...
         var client = new BlobClient(Options.ConnectionString, Options.Container, remoteFileName);
         var newFilePath = Path.Combine(Options.Path, remoteFileName);
         await client.DownloadToAsync(newFilePath);
