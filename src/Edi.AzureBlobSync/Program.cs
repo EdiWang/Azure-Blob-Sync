@@ -1,27 +1,10 @@
 ﻿using System.Reflection;
+using System.Text;
 using Azure.Storage.Blobs;
 using CommandLine;
 using Spectre.Console;
 
 namespace Edi.AzureBlobSync;
-
-internal class Options
-{
-    [Option(longName: "connection", HelpText = "Storage Account Connection String")]
-    public string ConnectionString { get; set; }
-
-    [Option(longName: "container", HelpText = "Blob Container Name")]
-    public string Container { get; set; }
-
-    [Option(longName: "path", HelpText = "Local Folder Path")]
-    public string Path { get; set; }
-
-    [Option(longName: "threads", Default = 10, Required = false, HelpText = "Download threads")]
-    public int Threads { get; set; }
-
-    [Option(longName: "silence", Default = false, Required = false, HelpText = "Silence mode")]
-    public bool Silence { get; set; }
-}
 
 class Program
 {
@@ -31,6 +14,8 @@ class Program
 
     public static async Task Main(string[] args)
     {
+        Console.OutputEncoding = Encoding.UTF8;
+
         var parserResult = Parser.Default.ParseArguments<Options>(args);
         if (parserResult.Tag == ParserResultType.Parsed)
         {
@@ -65,6 +50,7 @@ class Program
 
                 var cloudFiles = new List<FileSyncInfo>();
                 await AnsiConsole.Status()
+                    .Spinner(Spinner.Known.Dots)
                     .StartAsync("Finding files on Azure Storage...", async _ =>
                     {
                         await foreach (var blobItem in BlobContainer.GetBlobsAsync())
@@ -107,6 +93,7 @@ class Program
                     if (Options.Silence || AnsiConsole.Confirm($"[green]{excepts.Count}[/] new file(s) to download. Continue?"))
                     {
                         await AnsiConsole.Status()
+                                .Spinner(Spinner.Known.Dots)
                                 .StartAsync($"Downloading files...", async _ =>
                                 {
                                     await DownloadAll(excepts);
