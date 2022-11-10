@@ -167,7 +167,7 @@ class Program
         var appVersion = Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
         var table = new Table
         {
-            Title = new TableTitle($"Edi.AzureBlobSync {appVersion}")
+            Title = new TableTitle($"Edi.AzureBlobSync {appVersion} | .NET {Environment.Version}")
         };
 
         table.AddColumn("Parameter");
