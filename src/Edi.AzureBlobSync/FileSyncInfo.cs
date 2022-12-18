@@ -5,12 +5,17 @@ internal class FileSyncInfo
     public string FileName { get; set; }
 
     public long? Length { get; set; }
+    public string ContentMD5 { get; set; }
+    public bool IsArchive { get; set; }
 
     public override bool Equals(object obj)
     {
         if (obj is FileSyncInfo si)
         {
-            return si.FileName == FileName && si.Length == Length;
+            return 
+                si.FileName == FileName && 
+                si.Length == Length && 
+                si.ContentMD5 == ContentMD5;
         }
         return false;
     }

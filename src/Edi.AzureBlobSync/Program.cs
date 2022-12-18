@@ -1,6 +1,8 @@
 ﻿using System.Reflection;
+using System.Security.Cryptography;
 using System.Text;
 using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using CommandLine;
 using Spectre.Console;
 
@@ -8,6 +10,8 @@ namespace Edi.AzureBlobSync;
 
 class Program
 {
+    private static int _notDownloaded = 0;
+
     public static Options Options { get; set; }
 
     public static BlobContainerClient BlobContainer { get; set; }
@@ -58,7 +62,9 @@ class Program
                             var fsi = new FileSyncInfo
                             {
                                 FileName = blobItem.Name,
-                                Length = blobItem.Properties.ContentLength
+                                Length = blobItem.Properties.ContentLength,
+                                ContentMD5 = Convert.ToBase64String(blobItem.Properties.ContentHash),
+                                IsArchive = blobItem.Properties.AccessTier == AccessTier.Archive
                             };
                             cloudFiles.Add(fsi);
                         }
@@ -78,6 +84,7 @@ class Program
                     {
                         FileName = fi.Name,
                         Length = fi.Length,
+                        ContentMD5 = Convert.ToBase64String(GetFileHash(fi.FullName))
                     })
                     .ToList();
 
@@ -147,7 +154,7 @@ class Program
                 }
 
                 AnsiConsole.WriteLine("----------------------------------------------------");
-                AnsiConsole.Write(new Markup($"Local Files Up to Date. [green]{excepts.Count}[/] new file(s) downloaded, [yellow]{deleteCount}[/] file(s) deleted."));
+                AnsiConsole.Write(new Markup($"Local Files Up to Date. [green]{excepts.Count - _notDownloaded}[/] new file(s) downloaded, [yellow]{deleteCount}[/] file(s) deleted."));
             }
             catch (Exception e)
             {
@@ -184,25 +191,34 @@ class Program
         var downloadTask = new List<Task>();
         foreach (var fileSyncInfo in excepts)
         {
-            await semaphore.WaitAsync();
-
-            var t = Task.Run(async () =>
+            if (!fileSyncInfo.IsArchive)
             {
-                try
-                {
-                    await DownloadBlob(fileSyncInfo.FileName);
-                }
-                catch (Exception e)
-                {
-                    AnsiConsole.WriteException(e);
-                }
-                finally
-                {
-                    semaphore.Release();
-                }
-            });
+                await semaphore.WaitAsync();
 
-            downloadTask.Add(t);
+                var t = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await DownloadBlob(fileSyncInfo.FileName);
+                    }
+                    catch (Exception e)
+                    {
+                        _notDownloaded++;
+                        AnsiConsole.WriteException(e);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
+
+                downloadTask.Add(t);
+            }
+            else
+            {
+                _notDownloaded++;
+                AnsiConsole.Write(new Markup($"[yellow]Skipped download for archived file '{fileSyncInfo.FileName}', please move it to cool or hot tier.[/]\n"));
+            }
         }
 
         await Task.WhenAll(downloadTask);
@@ -220,5 +236,12 @@ class Program
     {
         var container = new BlobContainerClient(Options.ConnectionString, Options.Container);
         return container;
+    }
+
+    private static byte[] GetFileHash(string path)
+    {
+        using var md5 = MD5.Create();
+        using var stream = File.OpenRead(path);
+        return md5.ComputeHash(stream);
     }
 }
