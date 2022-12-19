@@ -101,10 +101,7 @@ class Program
                     {
                         await AnsiConsole.Status()
                                 .Spinner(Spinner.Known.Dots)
-                                .StartAsync($"Downloading files...", async _ =>
-                                {
-                                    await DownloadAll(excepts);
-                                });
+                                .StartAsync($"Downloading files...", async _ => await DownloadAll(excepts));
                     }
                     else
                     {
@@ -175,7 +172,7 @@ class Program
         var appVersion = Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>().InformationalVersion;
         var table = new Table
         {
-            Title = new TableTitle($"Edi.AzureBlobSync {appVersion} | .NET {Environment.Version}")
+            Title = new($"Edi.AzureBlobSync {appVersion} | .NET {Environment.Version}")
         };
 
         table.AddColumn("Parameter");
