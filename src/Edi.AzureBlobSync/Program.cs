@@ -132,10 +132,11 @@ class Program
 
                             localExceptsTable.AddColumn("File Name");
                             localExceptsTable.AddColumn("Length (bytes)");
+                            localExceptsTable.AddColumn("Content-MD5");
 
                             foreach (var f in localExcepts)
                             {
-                                localExceptsTable.AddRow(f.FileName, f.Length.ToString());
+                                localExceptsTable.AddRow(f.FileName, f.Length.ToString(), f.ContentMD5);
                             }
 
                             AnsiConsole.Write(localExceptsTable);
@@ -200,6 +201,7 @@ class Program
                     try
                     {
                         await DownloadBlob(fileSyncInfo.FileName);
+                        AnsiConsole.Write($"[{DateTime.Now:HH:mm:ss}] downloaded {fileSyncInfo.FileName}, content-md5: {fileSyncInfo.ContentMD5}.\n");
                     }
                     catch (Exception e)
                     {
@@ -229,7 +231,6 @@ class Program
         var client = new BlobClient(Options.ConnectionString, Options.Container, remoteFileName);
         var newFilePath = Path.Combine(Options.Path, remoteFileName);
         await client.DownloadToAsync(newFilePath);
-        AnsiConsole.Write($"[{DateTime.Now}] downloaded {remoteFileName}.\n");
     }
 
     private static BlobContainerClient GetBlobContainer()
