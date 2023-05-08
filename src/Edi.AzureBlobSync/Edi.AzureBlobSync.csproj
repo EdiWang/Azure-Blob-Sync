@@ -14,7 +14,6 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Title>Edi.AzureBlobSync</Title>
 		<Description>.NET Tool for backup files in Azure Blob Storage to local file system.</Description>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/EdiWang/Azure-Blob-Backup</RepositoryUrl>
 		<PackageTags>Azure</PackageTags>
 	</PropertyGroup>
