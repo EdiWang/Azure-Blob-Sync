@@ -11,6 +11,7 @@ namespace Edi.AzureBlobSync;
 class Program
 {
     private static int _notDownloaded = 0;
+    private static int _archived = 0;
 
     public static Options Options { get; set; }
 
@@ -152,7 +153,7 @@ class Program
                 }
 
                 AnsiConsole.WriteLine("----------------------------------------------------");
-                AnsiConsole.Write(new Markup($"Local Files Up to Date. [green]{excepts.Count - _notDownloaded}[/] new file(s) downloaded, [yellow]{deleteCount}[/] file(s) deleted."));
+                AnsiConsole.Write(new Markup($"Local Files Up to Date. [green]{excepts.Count - _notDownloaded}[/] new file(s) downloaded, [yellow]{deleteCount}[/] file(s) deleted, {_archived} file(s) archived not downloaded."));
             }
             catch (Exception e)
             {
@@ -216,6 +217,8 @@ class Program
             else
             {
                 _notDownloaded++;
+                _archived++;
+
                 AnsiConsole.Write(new Markup($"[yellow]Skipped download for archived file '{fileSyncInfo.FileName}', please move it to cool or hot tier.[/]\n"));
             }
         }
