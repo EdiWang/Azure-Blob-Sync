@@ -64,7 +64,7 @@ class Program
                             {
                                 FileName = blobItem.Name,
                                 Length = blobItem.Properties.ContentLength,
-                                ContentMD5 = Convert.ToBase64String(blobItem.Properties.ContentHash),
+                                ContentMD5 = Options.CompareHash.GetValueOrDefault() ? Convert.ToBase64String(blobItem.Properties.ContentHash) : string.Empty,
                                 IsArchive = blobItem.Properties.AccessTier == AccessTier.Archive
                             };
                             cloudFiles.Add(fsi);
@@ -85,7 +85,7 @@ class Program
                     {
                         FileName = fi.Name,
                         Length = fi.Length,
-                        ContentMD5 = Convert.ToBase64String(GetFileHash(fi.FullName))
+                        ContentMD5 = Options.CompareHash.GetValueOrDefault() ? Convert.ToBase64String(GetFileHash(fi.FullName)) : string.Empty
                     })
                     .ToList();
 
@@ -181,6 +181,8 @@ class Program
         table.AddRow(new Markup("[blue]Container Name[/]"), new Text(Options.Container));
         table.AddRow(new Markup("[blue]Download Threads[/]"), new Text(Options.Threads.ToString()));
         table.AddRow(new Markup("[blue]Local Path[/]"), new Text(Options.Path));
+        table.AddRow(new Markup("[blue]Compare Hash[/]"), new Text(Options.CompareHash.ToString()));
+
         AnsiConsole.Write(table);
     }
 

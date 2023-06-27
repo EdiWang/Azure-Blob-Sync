@@ -18,4 +18,7 @@ internal class Options
 
     [Option(longName: "silence", Default = false, Required = false, HelpText = "Silence mode")]
     public bool Silence { get; set; }
+
+    [Option(longName: "comparehash", Default = (bool)true, Required = false, HelpText = "Compare file hash")]
+    public bool? CompareHash { get; set; }
 }
