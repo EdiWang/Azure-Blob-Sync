@@ -1,7 +1,7 @@
 # Azure Blob Sync
-.NET Tool for backup files in Azure Blob Storage to local file system.
-
 ![.NET](https://github.com/EdiWang/Azure-Blob-Backup/workflows/.NET%20Core/badge.svg)
+
+.NET Tool for backup files in Azure Blob Storage to local file system.
 
 ## Install
 
@@ -29,6 +29,7 @@ azblobsync --connection "DefaultEndpointsProtocol=https;AccountName=*******;Acco
 --path		Local Folder Path (Required, Default: C:\AzureBlobSyncTemp)
 --threads	Download threads (Default: 10)
 --silence	Fully automated silence mode (Default: false)
+--comparehash   Compare file hash to determine whether to download (Default: true)
 --help		Display this help screen.
 --version	Display version information.
 ```
