@@ -1,26 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-	<PropertyGroup>
-		<OutputType>Exe</OutputType>
-		<TargetFramework>net6.0</TargetFramework>
-		<Version>1.17.1.0</Version>
-		<PackAsTool>true</PackAsTool>
-		<ToolCommandName>azblobsync</ToolCommandName>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-		<LangVersion>latest</LangVersion>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Title>Edi.AzureBlobSync</Title>
-		<Description>.NET Tool for backup files in Azure Blob Storage to local file system.</Description>
-		<RepositoryUrl>https://github.com/EdiWang/Azure-Blob-Backup</RepositoryUrl>
-		<PackageTags>Azure</PackageTags>
-	</PropertyGroup>
-
-	<ItemGroup>
-		<PackageReference Include="CommandLineParser" Version="2.9.1" />
-		<PackageReference Include="Spectre.Console" Version="0.47.0" />
-		<PackageReference Include="Microsoft.DotNet.PlatformAbstractions" Version="3.1.6" />
-		<PackageReference Include="Azure.Storage.Blobs" Version="12.17.0" />
-	</ItemGroup>
-
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <Version>1.17.2</Version>
+        <TargetFramework>net6.0</TargetFramework>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>azblobsync</ToolCommandName>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Description>.NET Tool for backup files in Azure Blob Storage to local file system.</Description>
+        <PackageTags>Azure</PackageTags>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/EdiWang/Azure-Blob-Backup</RepositoryUrl>
+        <LangVersion>latest</LangVersion>
+        <Title>Edi.AzureBlobSync</Title>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="CommandLineParser" Version="2.9.1" />
+        <PackageReference Include="Spectre.Console" Version="0.47.0" />
+        <PackageReference Include="Microsoft.DotNet.PlatformAbstractions" Version="3.1.6" />
+        <PackageReference Include="Azure.Storage.Blobs" Version="12.18.0" />
+    </ItemGroup>
 </Project>
