@@ -7,7 +7,7 @@
 
 Prerequests: 
 
-- .NET 6.0 SDK 
+- .NET 8.0 SDK 
 
 ```bash
 dotnet tool install --global edi.azureblobsync
