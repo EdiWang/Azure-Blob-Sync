@@ -1,30 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <Version>1.18.0</Version>
-        <TargetFramework>net8.0</TargetFramework>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackAsTool>true</PackAsTool>
-        <ToolCommandName>azblobsync</ToolCommandName>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Description>.NET Tool for backup files in Azure Blob Storage to local file system.</Description>
-        <PackageTags>Azure</PackageTags>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <RepositoryUrl>https://github.com/EdiWang/Azure-Blob-Backup</RepositoryUrl>
-        <LangVersion>latest</LangVersion>
-        <Title>Edi.AzureBlobSync</Title>
-        <PackageIcon>edi-logo-blue.png</PackageIcon>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-    </PropertyGroup>
-    <ItemGroup>
-        <PackageReference Include="CommandLineParser" Version="2.9.1" />
-        <PackageReference Include="Spectre.Console" Version="0.47.0" />
-        <PackageReference Include="Microsoft.DotNet.PlatformAbstractions" Version="3.1.6" />
-        <PackageReference Include="Azure.Storage.Blobs" Version="12.19.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <None Include="..\..\README.md" Pack="true" PackagePath="\"/>
-        <None Include="..\..\img\edi-logo-blue.png" Pack="true" PackagePath="\"/>
-    </ItemGroup>
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Version>1.18.1</Version>
+    <TargetFramework>net8.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>azblobsync</ToolCommandName>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Description>.NET Tool for backup files in Azure Blob Storage to local file system.</Description>
+    <PackageTags>Azure</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/EdiWang/Azure-Blob-Backup</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <LangVersion>latest</LangVersion>
+    <Title>Edi.AzureBlobSync</Title>
+    <PackageIcon>edi-logo-blue.png</PackageIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="Spectre.Console" Version="0.47.0" />
+    <PackageReference Include="Microsoft.DotNet.PlatformAbstractions" Version="3.1.6" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\img\edi-logo-blue.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
 </Project>
