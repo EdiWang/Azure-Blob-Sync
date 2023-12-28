@@ -30,7 +30,7 @@ azblobsync --connection "DefaultEndpointsProtocol=https;AccountName=*******;Acco
 --threads	Download threads (Default: 10)
 --silence	Fully automated silence mode (Default: false)
 --comparehash   Compare file hash to determine whether to download (Default: true)
---keepold   Keep local old file versions, do not override when receving a new version of file from Azure (Default: false)
+--keepold       Keep local old file versions, do not override when receving a new version of file from Azure (Default: false)
 --help		Display this help screen.
 --version	Display version information.
 ```
