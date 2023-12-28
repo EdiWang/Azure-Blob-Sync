@@ -143,11 +143,18 @@ class Program
 
                     if (Options.Silence || AnsiConsole.Confirm("[yellow]Do you want to delete these files?[/]"))
                     {
-                        AnsiConsole.WriteLine("Deleting local redundancy files...");
-                        foreach (var fi in localExcepts)
+                        if (!Options.KeepOld)
                         {
-                            File.Delete(Path.Combine(Options.Path, fi.FileName));
-                            deleteCount++;
+                            AnsiConsole.WriteLine("Deleting local redundancy files...");
+                            foreach (var fi in localExcepts)
+                            {
+                                File.Delete(Path.Combine(Options.Path, fi.FileName));
+                                deleteCount++;
+                            }
+                        }
+                        else
+                        {
+                            AnsiConsole.WriteLine("Skipping deleting local redundancy files because `KeepOld` is set to `true`.");
                         }
                     }
                 }
@@ -181,6 +188,7 @@ class Program
         table.AddRow(new Markup("[blue]Container Name[/]"), new Text(Options.Container));
         table.AddRow(new Markup("[blue]Download Threads[/]"), new Text(Options.Threads.ToString()));
         table.AddRow(new Markup("[blue]Local Path[/]"), new Text(Options.Path));
+        table.AddRow(new Markup("[blue]Keep Old[/]"), new Text(Options.KeepOld.ToString()));
         table.AddRow(new Markup("[blue]Compare Hash[/]"), new Text(Options.CompareHash.ToString()));
 
         AnsiConsole.Write(table);
@@ -232,6 +240,16 @@ class Program
     {
         var client = new BlobClient(Options.ConnectionString, Options.Container, remoteFileName);
         var newFilePath = Path.Combine(Options.Path, remoteFileName);
+
+        if (File.Exists(newFilePath) && Options.KeepOld)
+        {
+            // Rename old file, add a timestamp suffix, e.g. test.txt -> test_20210901_123456.txt
+            var newFileName = $"{Path.GetFileNameWithoutExtension(newFilePath)}_{DateTime.Now:yyyyMMdd_HHmmss}{Path.GetExtension(newFilePath)}";
+            var newFilePathWithTimestamp = Path.Combine(Options.Path, newFileName);
+            File.Move(newFilePath, newFilePathWithTimestamp);
+            AnsiConsole.Write(new Markup($"[yellow]Renamed old file '{newFilePath}' to '{newFilePathWithTimestamp}'.[/]\n"));
+        }
+
         await client.DownloadToAsync(newFilePath);
     }
 

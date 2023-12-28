@@ -19,6 +19,9 @@ internal class Options
     [Option(longName: "silence", Default = false, Required = false, HelpText = "Silence mode")]
     public bool Silence { get; set; }
 
+    [Option(longName: "keepold", Default = false, Required = false, HelpText = "Keep local old file versions, do not override when receving a new version of file from Azure")]
+    public bool KeepOld { get; set; }
+
     [Option(longName: "comparehash", Default = (bool)true, Required = false, HelpText = "Compare file hash")]
     public bool? CompareHash { get; set; }
 }
