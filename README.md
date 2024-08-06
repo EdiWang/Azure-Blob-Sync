@@ -3,6 +3,8 @@
 
 .NET Tool for backup files in Azure Blob Storage to local file system.
 
+You may also checkout [AzCopy](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-blobs-synchronize?WT.mc_id=AZ-MVP-5002809) from Microsoft that does the same job much more faster.
+
 ## Install
 
 Prerequests: 
