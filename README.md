@@ -1,5 +1,4 @@
 # Azure Blob Sync
-[![.NET Build and Pack](https://github.com/EdiWang/Azure-Blob-Sync/actions/workflows/dotnet.yml/badge.svg)](https://github.com/EdiWang/Azure-Blob-Sync/actions/workflows/dotnet.yml)
 
 .NET Tool for backup files in Azure Blob Storage to local file system.
 
