@@ -2,7 +2,7 @@
 
 namespace Edi.AzureBlobSync;
 
-internal class Options
+public class Options
 {
     [Option(longName: "connection", HelpText = "Storage Account Connection String")]
     public string ConnectionString { get; set; }

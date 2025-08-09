@@ -1,6 +1,6 @@
 ﻿namespace Edi.AzureBlobSync;
 
-internal class FileSyncInfo
+public class FileSyncInfo
 {
     public required string FileName { get; set; }
     public long? Length { get; set; }
