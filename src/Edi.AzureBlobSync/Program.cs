@@ -1,7 +1,6 @@
-﻿using System.Text;
-using CommandLine;
-using Edi.AzureBlobSync.Interfaces;
+﻿using CommandLine;
 using Edi.AzureBlobSync.Services;
+using System.Text;
 
 namespace Edi.AzureBlobSync;
 

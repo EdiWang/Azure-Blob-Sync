@@ -1,5 +1,5 @@
-using System.Security.Cryptography;
 using Edi.AzureBlobSync.Interfaces;
+using System.Security.Cryptography;
 
 namespace Edi.AzureBlobSync.Services;
 
@@ -10,7 +10,7 @@ public class FileService : IFileService
         if (!Directory.Exists(path))
         {
             Directory.CreateDirectory(path);
-            return new List<FileSyncInfo>();
+            return [];
         }
 
         return Directory.GetFiles(path, "*", SearchOption.TopDirectoryOnly)

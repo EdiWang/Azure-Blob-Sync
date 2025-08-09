@@ -3,63 +3,50 @@ using Edi.AzureBlobSync.Interfaces;
 
 namespace Edi.AzureBlobSync.Services;
 
-public class AzureBlobSyncService
+public class AzureBlobSyncService(
+    IBlobService blobService,
+    IFileService fileService,
+    IConsoleService consoleService,
+    IOptionsValidator optionsValidator)
 {
-    private readonly IBlobService _blobService;
-    private readonly IFileService _fileService;
-    private readonly IConsoleService _consoleService;
-    private readonly IOptionsValidator _optionsValidator;
-
     private int _notDownloaded = 0;
     private int _archived = 0;
-
-    public AzureBlobSyncService(
-        IBlobService blobService,
-        IFileService fileService,
-        IConsoleService consoleService,
-        IOptionsValidator optionsValidator)
-    {
-        _blobService = blobService;
-        _fileService = fileService;
-        _consoleService = consoleService;
-        _optionsValidator = optionsValidator;
-    }
 
     public async Task<int> RunAsync(Options options)
     {
         try
         {
-            options = await _optionsValidator.ValidateAndPromptAsync(options);
+            options = optionsValidator.ValidateAndPrompt(options);
             WriteParameterTable(options);
 
-            if (!options.Silence && !_consoleService.Confirm("Good to go?"))
+            if (!options.Silence && !consoleService.Confirm("Good to go?"))
             {
                 return 0;
             }
 
-            var blobContainer = _blobService.CreateContainerClient(options.ConnectionString, options.Container);
+            var blobContainer = blobService.CreateContainerClient(options.ConnectionString, options.Container);
 
             var cloudFiles = await FetchCloudFilesAsync(blobContainer, options);
-            _consoleService.WriteMarkup($"[green]{cloudFiles.Count}[/] cloud file(s) found.\n");
+            consoleService.WriteMarkup($"[green]{cloudFiles.Count}[/] cloud file(s) found.\n");
 
-            var localFiles = _fileService.GetLocalFiles(options.Path, options.CompareHash.GetValueOrDefault());
-            _consoleService.WriteMarkup($"[green]{localFiles.Count}[/] local file(s) found.\n");
+            var localFiles = fileService.GetLocalFiles(options.Path, options.CompareHash.GetValueOrDefault());
+            consoleService.WriteMarkup($"[green]{localFiles.Count}[/] local file(s) found.\n");
 
             await CompareAndSyncFilesAsync(cloudFiles, localFiles, options);
 
             if (!options.Silence)
             {
-                _consoleService.ReadKey();
+                consoleService.ReadKey();
             }
 
             return 0;
         }
         catch (Exception ex)
         {
-            _consoleService.WriteException(ex);
+            consoleService.WriteException(ex);
             if (!options.Silence)
             {
-                _consoleService.ReadKey();
+                consoleService.ReadKey();
             }
             return 1;
         }
@@ -76,16 +63,16 @@ public class AzureBlobSyncService
             { "Compare Hash", options.CompareHash.ToString() }
         };
 
-        _consoleService.WriteTable("Edi.AzureBlobSync", parameters);
+        consoleService.WriteTable("Edi.AzureBlobSync", parameters);
     }
 
     private async Task<List<FileSyncInfo>> FetchCloudFilesAsync(BlobContainerClient blobContainer, Options options)
     {
         var cloudFiles = new List<FileSyncInfo>();
 
-        await _consoleService.StartStatusAsync("Finding files on Azure Storage...", async () =>
+        await consoleService.StartStatusAsync("Finding files on Azure Storage...", async () =>
         {
-            cloudFiles = await _blobService.GetBlobFilesAsync(blobContainer, options.CompareHash.GetValueOrDefault());
+            cloudFiles = await blobService.GetBlobFilesAsync(blobContainer, options.CompareHash.GetValueOrDefault());
         });
 
         return cloudFiles;
@@ -98,14 +85,14 @@ public class AzureBlobSyncService
 
         if (filesToDownload.Count != 0)
         {
-            if (options.Silence || _consoleService.Confirm($"[green]{filesToDownload.Count}[/] new file(s) to download. Continue?"))
+            if (options.Silence || consoleService.Confirm($"[green]{filesToDownload.Count}[/] new file(s) to download. Continue?"))
             {
                 await DownloadFilesAsync(filesToDownload, options);
             }
         }
         else
         {
-            _consoleService.WriteLine("No new files need to be downloaded.");
+            consoleService.WriteLine("No new files need to be downloaded.");
         }
 
         var redundantLocalFiles = localFiles.Except(cloudFiles, comparer).ToList();
@@ -125,7 +112,7 @@ public class AzureBlobSyncService
             {
                 Interlocked.Increment(ref _archived);
                 Interlocked.Increment(ref _notDownloaded);
-                _consoleService.WriteMarkup($"[yellow]Skipped archived file '{file.FileName}'.[/]\n");
+                consoleService.WriteMarkup($"[yellow]Skipped archived file '{file.FileName}'.[/]\n");
                 continue;
             }
 
@@ -135,13 +122,13 @@ public class AzureBlobSyncService
             {
                 try
                 {
-                    await _blobService.DownloadBlobAsync(options.ConnectionString, options.Container, file.FileName, options.Path, options.KeepOld);
-                    _consoleService.WriteLine($"[{DateTime.Now:HH:mm:ss}] Downloaded {file.FileName}.");
+                    await blobService.DownloadBlobAsync(options.ConnectionString, options.Container, file.FileName, options.Path, options.KeepOld);
+                    consoleService.WriteLine($"[{DateTime.Now:HH:mm:ss}] Downloaded {file.FileName}.");
                 }
                 catch (Exception ex)
                 {
                     Interlocked.Increment(ref _notDownloaded);
-                    _consoleService.WriteMarkup($"[red]Failed to download {file.FileName}: {ex.Message}[/]\n");
+                    consoleService.WriteMarkup($"[red]Failed to download {file.FileName}: {ex.Message}[/]\n");
                 }
                 finally
                 {
@@ -162,15 +149,15 @@ public class AzureBlobSyncService
 
         if (!options.Silence)
         {
-            _consoleService.WriteMarkup($"[yellow]{redundantLocalFiles.Count}[/] redundant file(s) found. View and confirm deletion? (Press 'V' to view)[/]\n");
-            var key = _consoleService.ReadKey(true);
+            consoleService.WriteMarkup($"[yellow]{redundantLocalFiles.Count}[/] redundant file(s) found. View and confirm deletion? (Press 'V' to view)[/]\n");
+            var key = consoleService.ReadKey(true);
             if (key.Key == ConsoleKey.V)
             {
-                _consoleService.WriteFileTable(redundantLocalFiles);
+                consoleService.WriteFileTable(redundantLocalFiles);
             }
         }
 
-        if (options.Silence || _consoleService.Confirm("[yellow]Delete these files?[/]"))
+        if (options.Silence || consoleService.Confirm("[yellow]Delete these files?[/]"))
         {
             if (!options.KeepOld)
             {
@@ -179,27 +166,27 @@ public class AzureBlobSyncService
                     var filePath = Path.Combine(options.Path, file.FileName);
                     try
                     {
-                        if (_fileService.FileExists(filePath))
+                        if (fileService.FileExists(filePath))
                         {
-                            _fileService.DeleteFile(filePath);
+                            fileService.DeleteFile(filePath);
                         }
                     }
                     catch (Exception ex)
                     {
-                        _consoleService.WriteMarkup($"[red]Failed to delete {file.FileName}: {ex.Message}[/]\n");
+                        consoleService.WriteMarkup($"[red]Failed to delete {file.FileName}: {ex.Message}[/]\n");
                     }
                 }
             }
             else
             {
-                _consoleService.WriteLine("Skipping deletion due to KeepOld option.");
+                consoleService.WriteLine("Skipping deletion due to KeepOld option.");
             }
         }
     }
 
     private void DisplaySummary(int downloadedCount, int deletedCount)
     {
-        _consoleService.WriteLine("----------------------------------------------------");
-        _consoleService.WriteMarkup($"[green]{downloadedCount - _notDownloaded}[/] file(s) downloaded, [yellow]{deletedCount}[/] file(s) deleted, {_archived} archived file(s) skipped.\n");
+        consoleService.WriteLine("----------------------------------------------------");
+        consoleService.WriteMarkup($"[green]{downloadedCount - _notDownloaded}[/] file(s) downloaded, [yellow]{deletedCount}[/] file(s) deleted, {_archived} archived file(s) skipped.\n");
     }
 }

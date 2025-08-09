@@ -2,20 +2,13 @@ using Edi.AzureBlobSync.Interfaces;
 
 namespace Edi.AzureBlobSync.Services;
 
-public class OptionsValidator : IOptionsValidator
+public class OptionsValidator(IConsoleService consoleService) : IOptionsValidator
 {
-    private readonly IConsoleService _consoleService;
-
-    public OptionsValidator(IConsoleService consoleService)
+    public Options ValidateAndPrompt(Options options)
     {
-        _consoleService = consoleService;
-    }
-
-    public async Task<Options> ValidateAndPromptAsync(Options options)
-    {
-        options.ConnectionString ??= _consoleService.Ask("Enter Azure Storage Account connection string: ");
-        options.Container ??= _consoleService.Ask("Enter container name: ");
-        options.Path ??= _consoleService.Ask("Enter local path: ");
+        options.ConnectionString ??= consoleService.Ask("Enter Azure Storage Account connection string: ");
+        options.Container ??= consoleService.Ask("Enter container name: ");
+        options.Path ??= consoleService.Ask("Enter local path: ");
 
         // Validate connection string format
         if (!options.ConnectionString.Contains("AccountName=") || !options.ConnectionString.Contains("AccountKey="))

@@ -1,51 +1,27 @@
-using System.Reflection;
-using System.Text;
 using Edi.AzureBlobSync.Interfaces;
 using Spectre.Console;
+using System.Reflection;
+using System.Text;
 
 namespace Edi.AzureBlobSync.Services;
 
 public class ConsoleService : IConsoleService
 {
-    public void SetOutputEncoding(Encoding encoding)
-    {
-        Console.OutputEncoding = encoding;
-    }
+    public void SetOutputEncoding(Encoding encoding) => Console.OutputEncoding = encoding;
 
-    public void WriteMarkup(string markup)
-    {
-        AnsiConsole.Write(new Markup(markup));
-    }
+    public void WriteMarkup(string markup) => AnsiConsole.Write(new Markup(markup));
 
-    public void WriteLine(string message)
-    {
-        AnsiConsole.WriteLine(message);
-    }
+    public void WriteLine(string message) => AnsiConsole.WriteLine(message);
 
-    public void WriteException(Exception ex)
-    {
-        AnsiConsole.WriteException(ex);
-    }
+    public void WriteException(Exception ex) => AnsiConsole.WriteException(ex);
 
-    public ConsoleKeyInfo ReadKey(bool intercept = false)
-    {
-        return Console.ReadKey(intercept);
-    }
+    public ConsoleKeyInfo ReadKey(bool intercept = false) => Console.ReadKey(intercept);
 
-    public void ReadKey()
-    {
-        Console.ReadKey();
-    }
+    public void ReadKey() => Console.ReadKey();
 
-    public bool Confirm(string message)
-    {
-        return AnsiConsole.Confirm(message);
-    }
+    public bool Confirm(string message) => AnsiConsole.Confirm(message);
 
-    public string Ask(string question)
-    {
-        return AnsiConsole.Ask<string>(question);
-    }
+    public string Ask(string question) => AnsiConsole.Ask<string>(question);
 
     public async Task StartStatusAsync(string message, Func<Task> action)
     {
