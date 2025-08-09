@@ -13,10 +13,10 @@ class Program
     private static int _notDownloaded = 0;
     private static int _archived = 0;
 
-    public static Options Options { get; private set; }
-    public static BlobContainerClient BlobContainer { get; private set; }
+    public static Options Options { get; private set; } = null!;
+    public static BlobContainerClient BlobContainer { get; private set; } = null!;
 
-    public static async Task Main(string[] args)
+    public static async Task<int> Main(string[] args)
     {
         Console.OutputEncoding = Encoding.UTF8;
 
@@ -25,28 +25,31 @@ class Program
         if (parserResult is Parsed<Options> parsedResult)
         {
             Options = parsedResult.Value;
-            await RunAsync();
+            return await RunAsync();
         }
         else
         {
             AnsiConsole.Write(new Markup("[red]ERROR: Failed to parse console parameters.[/]"));
+            if (!Options?.Silence ?? true)
+            {
+                Console.ReadKey();
+            }
+            return 1;
         }
-
-        Console.ReadKey();
     }
 
-    private static async Task RunAsync()
+    private static async Task<int> RunAsync()
     {
-        ValidateAndPromptOptions();
-        WriteParameterTable();
-
-        if (!Options.Silence && !AnsiConsole.Confirm("Good to go?"))
-        {
-            return;
-        }
-
         try
         {
+            ValidateAndPromptOptions();
+            WriteParameterTable();
+
+            if (!Options.Silence && !AnsiConsole.Confirm("Good to go?"))
+            {
+                return 0;
+            }
+
             BlobContainer = InitializeBlobContainer();
 
             var cloudFiles = await FetchCloudFilesAsync();
@@ -56,10 +59,22 @@ class Program
             AnsiConsole.Write(new Markup($"[green]{localFiles.Count}[/] local file(s) found.\n"));
 
             await CompareAndSyncFilesAsync(cloudFiles, localFiles);
+
+            if (!Options.Silence)
+            {
+                Console.ReadKey();
+            }
+
+            return 0;
         }
         catch (Exception ex)
         {
             AnsiConsole.WriteException(ex);
+            if (!Options.Silence)
+            {
+                Console.ReadKey();
+            }
+            return 1;
         }
     }
 
@@ -70,11 +85,31 @@ class Program
         Options.ConnectionString ??= AnsiConsole.Ask<string>("Enter Azure Storage Account connection string: ");
         Options.Container ??= AnsiConsole.Ask<string>("Enter container name: ");
         Options.Path ??= AnsiConsole.Ask<string>("Enter local path: ");
+
+        // Validate connection string format
+        if (!Options.ConnectionString.Contains("AccountName=") || !Options.ConnectionString.Contains("AccountKey="))
+        {
+            throw new ArgumentException("Invalid connection string format.");
+        }
+
+        // Ensure path is absolute
+        if (!Path.IsPathRooted(Options.Path))
+        {
+            Options.Path = Path.GetFullPath(Options.Path);
+        }
     }
 
     private static BlobContainerClient InitializeBlobContainer()
     {
-        return new BlobContainerClient(Options.ConnectionString, Options.Container);
+        var client = new BlobContainerClient(Options.ConnectionString, Options.Container);
+
+        // Verify container exists
+        if (!client.Exists())
+        {
+            throw new InvalidOperationException($"Container '{Options.Container}' does not exist or is not accessible.");
+        }
+
+        return client;
     }
 
     private static void WriteParameterTable()
@@ -89,9 +124,9 @@ class Program
 
         table.AddColumn("Parameter");
         table.AddColumn("Value");
-        table.AddRow("[blue]Container Name[/]", Options.Container);
+        table.AddRow("[blue]Container Name[/]", Options.Container ?? "Not set");
         table.AddRow("[blue]Download Threads[/]", Options.Threads.ToString());
-        table.AddRow("[blue]Local Path[/]", Options.Path);
+        table.AddRow("[blue]Local Path[/]", Options.Path ?? "Not set");
         table.AddRow("[blue]Keep Old[/]", Options.KeepOld.ToString());
         table.AddRow("[blue]Compare Hash[/]", Options.CompareHash.ToString());
 
@@ -110,13 +145,14 @@ class Program
             .Spinner(Spinner.Known.Dots)
             .StartAsync("Finding files on Azure Storage...", async _ =>
             {
-                await foreach (var blobItem in BlobContainer.GetBlobsAsync())
+                var asyncEnumerable = BlobContainer.GetBlobsAsync(cancellationToken: CancellationToken.None);
+                await foreach (var blobItem in asyncEnumerable.ConfigureAwait(false))
                 {
                     cloudFiles.Add(new FileSyncInfo
                     {
                         FileName = blobItem.Name,
                         Length = blobItem.Properties.ContentLength,
-                        ContentMD5 = Options.CompareHash.GetValueOrDefault()
+                        ContentMD5 = Options.CompareHash.GetValueOrDefault() && blobItem.Properties.ContentHash != null
                             ? Convert.ToBase64String(blobItem.Properties.ContentHash)
                             : string.Empty,
                         IsArchive = blobItem.Properties.AccessTier == AccessTier.Archive
@@ -132,10 +168,13 @@ class Program
         if (!Directory.Exists(Options.Path))
         {
             Directory.CreateDirectory(Options.Path);
+            return new List<FileSyncInfo>();
         }
 
-        return Directory.GetFiles(Options.Path)
+        return Directory.GetFiles(Options.Path, "*", SearchOption.TopDirectoryOnly)
+            .AsParallel()
             .Select(filePath => new FileInfo(filePath))
+            .Where(fileInfo => fileInfo.Exists) // Additional safety check
             .Select(fileInfo => new FileSyncInfo
             {
                 FileName = fileInfo.Name,
@@ -153,7 +192,9 @@ class Program
 
     private static async Task CompareAndSyncFilesAsync(List<FileSyncInfo> cloudFiles, List<FileSyncInfo> localFiles)
     {
-        var filesToDownload = cloudFiles.Except(localFiles).ToList();
+        // Use a comparer that handles case-insensitive file name comparison
+        var comparer = new FileSyncInfoComparer();
+        var filesToDownload = cloudFiles.Except(localFiles, comparer).ToList();
 
         if (filesToDownload.Count != 0)
         {
@@ -167,7 +208,7 @@ class Program
             AnsiConsole.WriteLine("No new files need to be downloaded.");
         }
 
-        var redundantLocalFiles = localFiles.Except(cloudFiles).ToList();
+        var redundantLocalFiles = localFiles.Except(cloudFiles, comparer).ToList();
         HandleRedundantLocalFiles(redundantLocalFiles);
 
         DisplaySummary(filesToDownload.Count, redundantLocalFiles.Count);
@@ -182,8 +223,8 @@ class Program
         {
             if (file.IsArchive)
             {
-                _notDownloaded++;
-                _archived++;
+                Interlocked.Increment(ref _notDownloaded);
+                Interlocked.Increment(ref _archived);
                 AnsiConsole.Write(new Markup($"[yellow]Skipped archived file '{file.FileName}'.[/]\n"));
                 continue;
             }
@@ -199,8 +240,8 @@ class Program
                 }
                 catch (Exception ex)
                 {
-                    _notDownloaded++;
-                    AnsiConsole.WriteException(ex);
+                    Interlocked.Increment(ref _notDownloaded);
+                    AnsiConsole.Write(new Markup($"[red]Failed to download {file.FileName}: {ex.Message}[/]\n"));
                 }
                 finally
                 {
@@ -221,8 +262,9 @@ class Program
 
         if (!Options.Silence)
         {
-            AnsiConsole.Write(new Markup($"[yellow]{redundantLocalFiles.Count}[/] redundant file(s) found. View and confirm deletion?\n"));
-            if (Console.ReadKey().Key == ConsoleKey.V)
+            AnsiConsole.Write(new Markup($"[yellow]{redundantLocalFiles.Count}[/] redundant file(s) found. View and confirm deletion? (Press 'V' to view)[/]\n"));
+            var key = Console.ReadKey(true);
+            if (key.Key == ConsoleKey.V)
             {
                 DisplayFileList(redundantLocalFiles);
             }
@@ -234,7 +276,18 @@ class Program
             {
                 foreach (var file in redundantLocalFiles)
                 {
-                    File.Delete(Path.Combine(Options.Path, file.FileName));
+                    var filePath = Path.Combine(Options.Path, file.FileName);
+                    try
+                    {
+                        if (File.Exists(filePath))
+                        {
+                            File.Delete(filePath);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AnsiConsole.Write(new Markup($"[red]Failed to delete {file.FileName}: {ex.Message}[/]\n"));
+                    }
                 }
             }
             else
@@ -253,7 +306,10 @@ class Program
 
         foreach (var file in files)
         {
-            table.AddRow(file.FileName, file.Length.ToString(), file.ContentMD5);
+            table.AddRow(
+                file.FileName ?? "Unknown",
+                file.Length?.ToString() ?? "Unknown",
+                string.IsNullOrEmpty(file.ContentMD5) ? "Not calculated" : file.ContentMD5);
         }
 
         AnsiConsole.Write(table);
@@ -274,13 +330,20 @@ class Program
         var client = new BlobClient(Options.ConnectionString, Options.Container, remoteFileName);
         var localFilePath = Path.Combine(Options.Path, remoteFileName);
 
+        // Ensure directory exists for nested file paths
+        var directory = Path.GetDirectoryName(localFilePath);
+        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
         if (File.Exists(localFilePath) && Options.KeepOld)
         {
             var timestampedFileName = $"{Path.GetFileNameWithoutExtension(localFilePath)}_{DateTime.Now:yyyyMMdd_HHmmss}{Path.GetExtension(localFilePath)}";
             var timestampedFilePath = Path.Combine(Options.Path, timestampedFileName);
             File.Move(localFilePath, timestampedFilePath);
 
-            AnsiConsole.Write(new Markup($"[yellow]Renamed existing file to '{timestampedFilePath}'.[/]\n"));
+            AnsiConsole.Write(new Markup($"[yellow]Renamed existing file to '{timestampedFileName}'.[/]\n"));
         }
 
         await client.DownloadToAsync(localFilePath);
@@ -294,4 +357,25 @@ class Program
     }
 
     #endregion
+}
+
+internal class FileSyncInfoComparer : IEqualityComparer<FileSyncInfo>
+{
+    public bool Equals(FileSyncInfo x, FileSyncInfo y)
+    {
+        if (ReferenceEquals(x, y)) return true;
+        if (x is null || y is null) return false;
+
+        return string.Equals(x.FileName, y.FileName, StringComparison.OrdinalIgnoreCase) &&
+               x.Length == y.Length &&
+               string.Equals(x.ContentMD5, y.ContentMD5, StringComparison.Ordinal);
+    }
+
+    public int GetHashCode(FileSyncInfo obj)
+    {
+        return HashCode.Combine(
+            obj.FileName?.ToLowerInvariant(),
+            obj.Length,
+            obj.ContentMD5);
+    }
 }
