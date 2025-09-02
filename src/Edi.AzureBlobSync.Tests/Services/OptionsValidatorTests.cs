@@ -1,23 +1,27 @@
 using Edi.AzureBlobSync.Interfaces;
 using Edi.AzureBlobSync.Services;
 using Moq;
+using Xunit;
 
 namespace Edi.AzureBlobSync.Tests.Services;
 
-[TestClass]
-public class OptionsValidatorTests
+public class OptionsValidatorTests : IDisposable
 {
-    private Mock<IConsoleService> _mockConsoleService;
-    private OptionsValidator _optionsValidator;
+    private readonly Mock<IConsoleService> _mockConsoleService;
+    private readonly OptionsValidator _optionsValidator;
 
-    [TestInitialize]
-    public void Setup()
+    public OptionsValidatorTests()
     {
         _mockConsoleService = new Mock<IConsoleService>();
         _optionsValidator = new OptionsValidator(_mockConsoleService.Object);
     }
 
-    [TestMethod]
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+
+    [Fact]
     public void ValidateAndPrompt_WithAllPropertiesSet_ReturnsOptionsUnchanged()
     {
         // Arrange
@@ -32,13 +36,13 @@ public class OptionsValidatorTests
         var result = _optionsValidator.ValidateAndPrompt(options);
 
         // Assert
-        Assert.AreEqual(options.ConnectionString, result.ConnectionString);
-        Assert.AreEqual(options.Container, result.Container);
-        Assert.AreEqual(options.Path, result.Path);
+        Assert.Equal(options.ConnectionString, result.ConnectionString);
+        Assert.Equal(options.Container, result.Container);
+        Assert.Equal(options.Path, result.Path);
         _mockConsoleService.Verify(x => x.Ask(It.IsAny<string>()), Times.Never);
     }
 
-    [TestMethod]
+    [Fact]
     public void ValidateAndPrompt_WithNullConnectionString_PromptsForConnectionString()
     {
         // Arrange
@@ -58,11 +62,11 @@ public class OptionsValidatorTests
         var result = _optionsValidator.ValidateAndPrompt(options);
 
         // Assert
-        Assert.AreEqual(expectedConnectionString, result.ConnectionString);
+        Assert.Equal(expectedConnectionString, result.ConnectionString);
         _mockConsoleService.Verify(x => x.Ask("Enter Azure Storage Account connection string: "), Times.Once);
     }
 
-    [TestMethod]
+    [Fact]
     public void ValidateAndPrompt_WithNullContainer_PromptsForContainer()
     {
         // Arrange
@@ -82,11 +86,11 @@ public class OptionsValidatorTests
         var result = _optionsValidator.ValidateAndPrompt(options);
 
         // Assert
-        Assert.AreEqual(expectedContainer, result.Container);
+        Assert.Equal(expectedContainer, result.Container);
         _mockConsoleService.Verify(x => x.Ask("Enter container name: "), Times.Once);
     }
 
-    [TestMethod]
+    [Fact]
     public void ValidateAndPrompt_WithNullPath_PromptsForPath()
     {
         // Arrange
@@ -106,11 +110,11 @@ public class OptionsValidatorTests
         var result = _optionsValidator.ValidateAndPrompt(options);
 
         // Assert
-        Assert.AreEqual(expectedPath, result.Path);
+        Assert.Equal(expectedPath, result.Path);
         _mockConsoleService.Verify(x => x.Ask("Enter local path: "), Times.Once);
     }
 
-    [TestMethod]
+    [Fact]
     public void ValidateAndPrompt_WithAllNullProperties_PromptsForAll()
     {
         // Arrange
@@ -139,15 +143,15 @@ public class OptionsValidatorTests
         var result = _optionsValidator.ValidateAndPrompt(options);
 
         // Assert
-        Assert.AreEqual(expectedConnectionString, result.ConnectionString);
-        Assert.AreEqual(expectedContainer, result.Container);
-        Assert.AreEqual(expectedPath, result.Path);
+        Assert.Equal(expectedConnectionString, result.ConnectionString);
+        Assert.Equal(expectedContainer, result.Container);
+        Assert.Equal(expectedPath, result.Path);
         _mockConsoleService.Verify(x => x.Ask("Enter Azure Storage Account connection string: "), Times.Once);
         _mockConsoleService.Verify(x => x.Ask("Enter container name: "), Times.Once);
         _mockConsoleService.Verify(x => x.Ask("Enter local path: "), Times.Once);
     }
 
-    [TestMethod]
+    [Fact]
     public void ValidateAndPrompt_WithInvalidConnectionStringMissingAccountName_ThrowsArgumentException()
     {
         // Arrange
@@ -159,11 +163,11 @@ public class OptionsValidatorTests
         };
 
         // Act & Assert
-        var exception = Assert.ThrowsException<ArgumentException>(() => _optionsValidator.ValidateAndPrompt(options));
-        Assert.AreEqual("Invalid connection string format.", exception.Message);
+        var exception = Assert.Throws<ArgumentException>(() => _optionsValidator.ValidateAndPrompt(options));
+        Assert.Equal("Invalid connection string format.", exception.Message);
     }
 
-    [TestMethod]
+    [Fact]
     public void ValidateAndPrompt_WithInvalidConnectionStringMissingAccountKey_ThrowsArgumentException()
     {
         // Arrange
@@ -175,11 +179,11 @@ public class OptionsValidatorTests
         };
 
         // Act & Assert
-        var exception = Assert.ThrowsException<ArgumentException>(() => _optionsValidator.ValidateAndPrompt(options));
-        Assert.AreEqual("Invalid connection string format.", exception.Message);
+        var exception = Assert.Throws<ArgumentException>(() => _optionsValidator.ValidateAndPrompt(options));
+        Assert.Equal("Invalid connection string format.", exception.Message);
     }
 
-    [TestMethod]
+    [Fact]
     public void ValidateAndPrompt_WithInvalidConnectionStringMissingBoth_ThrowsArgumentException()
     {
         // Arrange
@@ -191,11 +195,11 @@ public class OptionsValidatorTests
         };
 
         // Act & Assert
-        var exception = Assert.ThrowsException<ArgumentException>(() => _optionsValidator.ValidateAndPrompt(options));
-        Assert.AreEqual("Invalid connection string format.", exception.Message);
+        var exception = Assert.Throws<ArgumentException>(() => _optionsValidator.ValidateAndPrompt(options));
+        Assert.Equal("Invalid connection string format.", exception.Message);
     }
 
-    [TestMethod]
+    [Fact]
     public void ValidateAndPrompt_WithRelativePath_ConvertsToAbsolutePath()
     {
         // Arrange
@@ -211,11 +215,11 @@ public class OptionsValidatorTests
         var result = _optionsValidator.ValidateAndPrompt(options);
 
         // Assert
-        Assert.IsTrue(Path.IsPathRooted(result.Path));
-        Assert.AreEqual(Path.GetFullPath(relativePath), result.Path);
+        Assert.True(Path.IsPathRooted(result.Path));
+        Assert.Equal(Path.GetFullPath(relativePath), result.Path);
     }
 
-    [TestMethod]
+    [Fact]
     public void ValidateAndPrompt_WithAbsolutePath_KeepsPathUnchanged()
     {
         // Arrange
@@ -231,10 +235,10 @@ public class OptionsValidatorTests
         var result = _optionsValidator.ValidateAndPrompt(options);
 
         // Assert
-        Assert.AreEqual(absolutePath, result.Path);
+        Assert.Equal(absolutePath, result.Path);
     }
 
-    [TestMethod]
+    [Fact]
     public void ValidateAndPrompt_WithPromptedInvalidConnectionString_ThrowsArgumentException()
     {
         // Arrange
@@ -251,11 +255,11 @@ public class OptionsValidatorTests
             .Returns(invalidConnectionString);
 
         // Act & Assert
-        var exception = Assert.ThrowsException<ArgumentException>(() => _optionsValidator.ValidateAndPrompt(options));
-        Assert.AreEqual("Invalid connection string format.", exception.Message);
+        var exception = Assert.Throws<ArgumentException>(() => _optionsValidator.ValidateAndPrompt(options));
+        Assert.Equal("Invalid connection string format.", exception.Message);
     }
 
-    [TestMethod]
+    [Fact]
     public void ValidateAndPrompt_WithPromptedRelativePath_ConvertsToAbsolutePath()
     {
         // Arrange
@@ -275,7 +279,7 @@ public class OptionsValidatorTests
         var result = _optionsValidator.ValidateAndPrompt(options);
 
         // Assert
-        Assert.IsTrue(Path.IsPathRooted(result.Path));
-        Assert.AreEqual(Path.GetFullPath(relativePath), result.Path);
+        Assert.True(Path.IsPathRooted(result.Path));
+        Assert.Equal(Path.GetFullPath(relativePath), result.Path);
     }
 }

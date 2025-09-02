@@ -4,24 +4,22 @@ using Azure.Storage.Blobs.Models;
 using Edi.AzureBlobSync.Services;
 using Moq;
 using System.Text;
+using Xunit;
 
 namespace Edi.AzureBlobSync.Tests.Services;
 
-[TestClass]
-public class BlobServiceTests
+public class BlobServiceTests : IDisposable
 {
-    private BlobService _blobService;
-    private string _testDirectory;
+    private readonly BlobService _blobService;
+    private readonly string _testDirectory;
 
-    [TestInitialize]
-    public void Setup()
+    public BlobServiceTests()
     {
         _blobService = new BlobService();
         _testDirectory = Path.Combine(Path.GetTempPath(), "BlobServiceTests", Guid.NewGuid().ToString());
     }
 
-    [TestCleanup]
-    public void Cleanup()
+    public void Dispose()
     {
         if (Directory.Exists(_testDirectory))
         {
@@ -29,7 +27,7 @@ public class BlobServiceTests
         }
     }
 
-    [TestMethod]
+    [Fact]
     public void CreateContainerClient_NullConnectionString_ThrowsArgumentNullException()
     {
         // Arrange
@@ -37,11 +35,11 @@ public class BlobServiceTests
         var containerName = "test-container";
 
         // Act & Assert
-        Assert.ThrowsExactly<ArgumentNullException>(() =>
+        Assert.Throws<ArgumentNullException>(() =>
             _blobService.CreateContainerClient(connectionString, containerName));
     }
 
-    [TestMethod]
+    [Fact]
     public void CreateContainerClient_NullContainerName_ThrowsArgumentNullException()
     {
         // Arrange
@@ -49,11 +47,11 @@ public class BlobServiceTests
         string containerName = null;
 
         // Act & Assert
-        Assert.ThrowsExactly<ArgumentNullException>(() =>
+        Assert.Throws<ArgumentNullException>(() =>
             _blobService.CreateContainerClient(connectionString, containerName));
     }
 
-    [TestMethod]
+    [Fact]
     public async Task GetBlobFilesAsync_WithCompareHashTrue_ReturnsFilesWithContentMD5()
     {
         // Arrange
@@ -68,22 +66,22 @@ public class BlobServiceTests
         var result = await _blobService.GetBlobFilesAsync(mockContainerClient.Object, true, CancellationToken.None);
 
         // Assert
-        Assert.AreEqual(2, result.Count);
+        Assert.Equal(2, result.Count);
         
         var file1 = result.First(f => f.FileName == "test1.txt");
-        Assert.AreEqual("test1.txt", file1.FileName);
-        Assert.AreEqual(100, file1.Length);
-        Assert.IsFalse(string.IsNullOrEmpty(file1.ContentMD5));
-        Assert.IsFalse(file1.IsArchive);
+        Assert.Equal("test1.txt", file1.FileName);
+        Assert.Equal(100, file1.Length);
+        Assert.False(string.IsNullOrEmpty(file1.ContentMD5));
+        Assert.False(file1.IsArchive);
 
         var file2 = result.First(f => f.FileName == "test2.txt");
-        Assert.AreEqual("test2.txt", file2.FileName);
-        Assert.AreEqual(200, file2.Length);
-        Assert.IsTrue(string.IsNullOrEmpty(file2.ContentMD5)); // No hash provided
-        Assert.IsTrue(file2.IsArchive);
+        Assert.Equal("test2.txt", file2.FileName);
+        Assert.Equal(200, file2.Length);
+        Assert.True(string.IsNullOrEmpty(file2.ContentMD5)); // No hash provided
+        Assert.True(file2.IsArchive);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task GetBlobFilesAsync_WithCompareHashFalse_ReturnsFilesWithoutContentMD5()
     {
         // Arrange
@@ -98,11 +96,11 @@ public class BlobServiceTests
         var result = await _blobService.GetBlobFilesAsync(mockContainerClient.Object, false, CancellationToken.None);
 
         // Assert
-        Assert.AreEqual(2, result.Count);
-        Assert.IsTrue(result.All(f => string.IsNullOrEmpty(f.ContentMD5)));
+        Assert.Equal(2, result.Count);
+        Assert.True(result.All(f => string.IsNullOrEmpty(f.ContentMD5)));
     }
 
-    [TestMethod]
+    [Fact]
     public async Task GetBlobFilesAsync_EmptyContainer_ReturnsEmptyList()
     {
         // Arrange
@@ -117,10 +115,10 @@ public class BlobServiceTests
         var result = await _blobService.GetBlobFilesAsync(mockContainerClient.Object, true, CancellationToken.None);
 
         // Assert
-        Assert.AreEqual(0, result.Count);
+        Assert.Empty(result);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task GetBlobFilesAsync_CancellationRequested_ThrowsOperationCanceledException()
     {
         // Arrange
@@ -133,12 +131,12 @@ public class BlobServiceTests
             .Throws<OperationCanceledException>();
 
         // Act & Assert
-        await Assert.ThrowsExactlyAsync<OperationCanceledException>(() =>
+        await Assert.ThrowsAsync<OperationCanceledException>(() =>
             _blobService.GetBlobFilesAsync(mockContainerClient.Object, true, cancellationTokenSource.Token));
     }
 
-    [TestMethod]
-    public Task DownloadBlobAsync_ValidParameters_CreatesDirectoryAndDownloadsFile()
+    [Fact]
+    public void DownloadBlobAsync_ValidParameters_CreatesDirectoryAndDownloadsFile()
     {
         // Arrange
         var connectionString = "UseDevelopmentStorage=true";
@@ -165,11 +163,10 @@ public class BlobServiceTests
         }
 
         // Assert
-        Assert.IsTrue(Directory.Exists(expectedDirectory));
-        return Task.CompletedTask;
+        Assert.True(Directory.Exists(expectedDirectory));
     }
 
-    [TestMethod]
+    [Fact]
     public async Task DownloadBlobAsync_WithKeepOldTrueAndExistingFile_MovesExistingFileWithTimestamp()
     {
         // Arrange
@@ -191,15 +188,15 @@ public class BlobServiceTests
         }
 
         // Assert
-        Assert.IsFalse(File.Exists(localFilePath));
+        Assert.False(File.Exists(localFilePath));
         var timestampedFiles = Directory.GetFiles(_testDirectory, "test_*.txt");
-        Assert.AreEqual(1, timestampedFiles.Length);
+        Assert.Single(timestampedFiles);
         
         var movedFileContent = await File.ReadAllTextAsync(timestampedFiles[0]);
-        Assert.AreEqual(originalContent, movedFileContent);
+        Assert.Equal(originalContent, movedFileContent);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task DownloadBlobAsync_WithKeepOldFalseAndExistingFile_OverwritesExistingFile()
     {
         // Arrange
@@ -216,7 +213,7 @@ public class BlobServiceTests
         var fileExistsBeforeDownload = File.Exists(localFilePath);
 
         // Assert
-        Assert.IsTrue(fileExistsBeforeDownload);
+        Assert.True(fileExistsBeforeDownload);
         // In actual implementation, the file would be overwritten by DownloadToAsync
     }
 

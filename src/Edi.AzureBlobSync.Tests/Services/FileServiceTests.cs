@@ -1,19 +1,18 @@
 using Edi.AzureBlobSync.Services;
 using System.Security.Cryptography;
 using System.Text;
+using Xunit;
 
 namespace Edi.AzureBlobSync.Tests.Services;
 
-[TestClass]
-public class FileServiceTests
+public class FileServiceTests : IDisposable
 {
-    private FileService _fileService;
-    private string _testDirectory;
-    private string _testFile1;
-    private string _testFile2;
+    private readonly FileService _fileService;
+    private readonly string _testDirectory;
+    private readonly string _testFile1;
+    private readonly string _testFile2;
 
-    [TestInitialize]
-    public void Setup()
+    public FileServiceTests()
     {
         _fileService = new FileService();
         _testDirectory = Path.Combine(Path.GetTempPath(), "FileServiceTests", Guid.NewGuid().ToString());
@@ -21,8 +20,7 @@ public class FileServiceTests
         _testFile2 = Path.Combine(_testDirectory, "test2.txt");
     }
 
-    [TestCleanup]
-    public void Cleanup()
+    public void Dispose()
     {
         if (Directory.Exists(_testDirectory))
         {
@@ -30,18 +28,18 @@ public class FileServiceTests
         }
     }
 
-    [TestMethod]
+    [Fact]
     public void GetLocalFiles_NonExistentDirectory_CreatesDirectoryAndReturnsEmptyList()
     {
         // Act
         var result = _fileService.GetLocalFiles(_testDirectory, false);
 
         // Assert
-        Assert.IsTrue(Directory.Exists(_testDirectory));
-        Assert.AreEqual(0, result.Count);
+        Assert.True(Directory.Exists(_testDirectory));
+        Assert.Empty(result);
     }
 
-    [TestMethod]
+    [Fact]
     public void GetLocalFiles_ExistingDirectoryWithFiles_ReturnsFileSyncInfoList()
     {
         // Arrange
@@ -53,14 +51,14 @@ public class FileServiceTests
         var result = _fileService.GetLocalFiles(_testDirectory, false);
 
         // Assert
-        Assert.AreEqual(2, result.Count);
-        Assert.IsTrue(result.Any(f => f.FileName == "test1.txt"));
-        Assert.IsTrue(result.Any(f => f.FileName == "test2.txt"));
-        Assert.IsTrue(result.All(f => f.Length > 0));
-        Assert.IsTrue(result.All(f => string.IsNullOrEmpty(f.ContentMD5)));
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, f => f.FileName == "test1.txt");
+        Assert.Contains(result, f => f.FileName == "test2.txt");
+        Assert.True(result.All(f => f.Length > 0));
+        Assert.True(result.All(f => string.IsNullOrEmpty(f.ContentMD5)));
     }
 
-    [TestMethod]
+    [Fact]
     public void GetLocalFiles_WithCompareHashTrue_IncludesContentMD5()
     {
         // Arrange
@@ -72,15 +70,15 @@ public class FileServiceTests
         var result = _fileService.GetLocalFiles(_testDirectory, true);
 
         // Assert
-        Assert.AreEqual(1, result.Count);
-        Assert.IsFalse(string.IsNullOrEmpty(result[0].ContentMD5));
+        Assert.Single(result);
+        Assert.False(string.IsNullOrEmpty(result[0].ContentMD5));
         
         // Verify the hash is correct
         var expectedHash = ComputeExpectedHash(testContent);
-        Assert.AreEqual(expectedHash, result[0].ContentMD5);
+        Assert.Equal(expectedHash, result[0].ContentMD5);
     }
 
-    [TestMethod]
+    [Fact]
     public void GetLocalFiles_WithCompareHashFalse_DoesNotIncludeContentMD5()
     {
         // Arrange
@@ -91,11 +89,11 @@ public class FileServiceTests
         var result = _fileService.GetLocalFiles(_testDirectory, false);
 
         // Assert
-        Assert.AreEqual(1, result.Count);
-        Assert.IsTrue(string.IsNullOrEmpty(result[0].ContentMD5));
+        Assert.Single(result);
+        Assert.True(string.IsNullOrEmpty(result[0].ContentMD5));
     }
 
-    [TestMethod]
+    [Fact]
     public void GetFileHash_ValidFile_ReturnsCorrectHash()
     {
         // Arrange
@@ -108,18 +106,17 @@ public class FileServiceTests
 
         // Assert
         var expectedHash = ComputeExpectedHashBytes(testContent);
-        CollectionAssert.AreEqual(expectedHash, result);
+        Assert.Equal(expectedHash, result);
     }
 
-    [TestMethod]
-    [ExpectedException(typeof(FileNotFoundException))]
+    [Fact]
     public void GetFileHash_NonExistentFile_ThrowsFileNotFoundException()
     {
-        // Act
-        _fileService.GetFileHash("non-existent-file.txt");
+        // Act & Assert
+        Assert.Throws<FileNotFoundException>(() => _fileService.GetFileHash("non-existent-file.txt"));
     }
 
-    [TestMethod]
+    [Fact]
     public void DirectoryExists_ExistingDirectory_ReturnsTrue()
     {
         // Arrange
@@ -129,30 +126,30 @@ public class FileServiceTests
         var result = _fileService.DirectoryExists(_testDirectory);
 
         // Assert
-        Assert.IsTrue(result);
+        Assert.True(result);
     }
 
-    [TestMethod]
+    [Fact]
     public void DirectoryExists_NonExistentDirectory_ReturnsFalse()
     {
         // Act
         var result = _fileService.DirectoryExists(_testDirectory);
 
         // Assert
-        Assert.IsFalse(result);
+        Assert.False(result);
     }
 
-    [TestMethod]
+    [Fact]
     public void CreateDirectory_ValidPath_CreatesDirectory()
     {
         // Act
         _fileService.CreateDirectory(_testDirectory);
 
         // Assert
-        Assert.IsTrue(Directory.Exists(_testDirectory));
+        Assert.True(Directory.Exists(_testDirectory));
     }
 
-    [TestMethod]
+    [Fact]
     public void FileExists_ExistingFile_ReturnsTrue()
     {
         // Arrange
@@ -163,20 +160,20 @@ public class FileServiceTests
         var result = _fileService.FileExists(_testFile1);
 
         // Assert
-        Assert.IsTrue(result);
+        Assert.True(result);
     }
 
-    [TestMethod]
+    [Fact]
     public void FileExists_NonExistentFile_ReturnsFalse()
     {
         // Act
         var result = _fileService.FileExists(_testFile1);
 
         // Assert
-        Assert.IsFalse(result);
+        Assert.False(result);
     }
 
-    [TestMethod]
+    [Fact]
     public void DeleteFile_ExistingFile_DeletesFile()
     {
         // Arrange
@@ -187,10 +184,10 @@ public class FileServiceTests
         _fileService.DeleteFile(_testFile1);
 
         // Assert
-        Assert.IsFalse(File.Exists(_testFile1));
+        Assert.False(File.Exists(_testFile1));
     }
 
-    [TestMethod]
+    [Fact]
     public void MoveFile_ValidPaths_MovesFile()
     {
         // Arrange
@@ -203,20 +200,19 @@ public class FileServiceTests
         _fileService.MoveFile(_testFile1, destinationPath);
 
         // Assert
-        Assert.IsFalse(File.Exists(_testFile1));
-        Assert.IsTrue(File.Exists(destinationPath));
-        Assert.AreEqual(testContent, File.ReadAllText(destinationPath));
+        Assert.False(File.Exists(_testFile1));
+        Assert.True(File.Exists(destinationPath));
+        Assert.Equal(testContent, File.ReadAllText(destinationPath));
     }
 
-    [TestMethod]
-    [ExpectedException(typeof(FileNotFoundException))]
+    [Fact]
     public void MoveFile_NonExistentSourceFile_ThrowsFileNotFoundException()
     {
-        // Act
-        _fileService.MoveFile("non-existent-file.txt", _testFile2);
+        // Act & Assert
+        Assert.Throws<FileNotFoundException>(() => _fileService.MoveFile("non-existent-file.txt", _testFile2));
     }
 
-    [TestMethod]
+    [Fact]
     public void GetDirectoryName_ValidPath_ReturnsDirectoryName()
     {
         // Arrange
@@ -226,10 +222,10 @@ public class FileServiceTests
         var result = _fileService.GetDirectoryName(filePath);
 
         // Assert
-        Assert.AreEqual(@"C:\Users\Test\Documents", result);
+        Assert.Equal(@"C:\Users\Test\Documents", result);
     }
 
-    [TestMethod]
+    [Fact]
     public void GetDirectoryName_RootPath_ReturnsEmptyString()
     {
         // Arrange
@@ -239,20 +235,20 @@ public class FileServiceTests
         var result = _fileService.GetDirectoryName(filePath);
 
         // Assert
-        Assert.AreEqual(string.Empty, result);
+        Assert.Equal(string.Empty, result);
     }
 
-    [TestMethod]
+    [Fact]
     public void GetDirectoryName_NullPath_ReturnsEmptyString()
     {
         // Act
         var result = _fileService.GetDirectoryName(null);
 
         // Assert
-        Assert.AreEqual(string.Empty, result);
+        Assert.Equal(string.Empty, result);
     }
 
-    [TestMethod]
+    [Fact]
     public void GetLocalFiles_EmptyDirectory_ReturnsEmptyList()
     {
         // Arrange
@@ -262,10 +258,10 @@ public class FileServiceTests
         var result = _fileService.GetLocalFiles(_testDirectory, false);
 
         // Assert
-        Assert.AreEqual(0, result.Count);
+        Assert.Empty(result);
     }
 
-    [TestMethod]
+    [Fact]
     public void GetLocalFiles_VerifyFileProperties_ReturnsCorrectFileInfo()
     {
         // Arrange
@@ -278,10 +274,10 @@ public class FileServiceTests
         var result = _fileService.GetLocalFiles(_testDirectory, false);
 
         // Assert
-        Assert.AreEqual(1, result.Count);
+        Assert.Single(result);
         var fileInfo = result[0];
-        Assert.AreEqual("test1.txt", fileInfo.FileName);
-        Assert.AreEqual(expectedLength, fileInfo.Length);
+        Assert.Equal("test1.txt", fileInfo.FileName);
+        Assert.Equal(expectedLength, fileInfo.Length);
     }
 
     private static string ComputeExpectedHash(string content)
@@ -294,8 +290,7 @@ public class FileServiceTests
 
     private static byte[] ComputeExpectedHashBytes(string content)
     {
-        using var md5 = MD5.Create();
         var bytes = Encoding.UTF8.GetBytes(content);
-        return md5.ComputeHash(bytes);
+        return MD5.HashData(bytes);
     }
 }
