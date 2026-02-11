@@ -59,7 +59,7 @@ public class BlobServiceTests : IDisposable
         var blobItems = CreateMockBlobItems();
 
         mockContainerClient
-            .Setup(x => x.GetBlobsAsync(It.IsAny<BlobTraits>(), It.IsAny<BlobStates>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetBlobsAsync(It.IsAny<GetBlobsOptions>(), It.IsAny<CancellationToken>()))
             .Returns(CreateAsyncPageable(blobItems));
 
         // Act
@@ -89,7 +89,7 @@ public class BlobServiceTests : IDisposable
         var blobItems = CreateMockBlobItems();
 
         mockContainerClient
-            .Setup(x => x.GetBlobsAsync(It.IsAny<BlobTraits>(), It.IsAny<BlobStates>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetBlobsAsync(It.IsAny<GetBlobsOptions>(), It.IsAny<CancellationToken>()))
             .Returns(CreateAsyncPageable(blobItems));
 
         // Act
@@ -108,7 +108,7 @@ public class BlobServiceTests : IDisposable
         var emptyBlobItems = new List<BlobItem>();
 
         mockContainerClient
-            .Setup(x => x.GetBlobsAsync(It.IsAny<BlobTraits>(), It.IsAny<BlobStates>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetBlobsAsync(It.IsAny<GetBlobsOptions>(), It.IsAny<CancellationToken>()))
             .Returns(CreateAsyncPageable(emptyBlobItems));
 
         // Act
@@ -127,7 +127,7 @@ public class BlobServiceTests : IDisposable
         cancellationTokenSource.Cancel();
 
         mockContainerClient
-            .Setup(x => x.GetBlobsAsync(It.IsAny<BlobTraits>(), It.IsAny<BlobStates>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetBlobsAsync(It.IsAny<GetBlobsOptions>(), It.IsAny<CancellationToken>()))
             .Throws<OperationCanceledException>();
 
         // Act & Assert
