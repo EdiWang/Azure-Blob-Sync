@@ -1,4 +1,5 @@
-﻿using CommandLine;
+﻿using System.CommandLine;
+using System.CommandLine.Parsing;
 using Edi.AzureBlobSync.Services;
 using System.Text;
 
@@ -17,17 +18,39 @@ class Program
 
         consoleService.SetOutputEncoding(Encoding.UTF8);
 
-        var parserResult = Parser.Default.ParseArguments<Options>(args);
+        var connectionOption = new Option<string>("--connection") { Description = "Storage Account Connection String" };
+        var containerOption = new Option<string>("--container") { Description = "Blob Container Name" };
+        var pathOption = new Option<string>("--path") { Description = "Local Folder Path" };
+        var threadsOption = new Option<int>("--threads") { Description = "Download threads", DefaultValueFactory = _ => 10 };
+        var silenceOption = new Option<bool>("--silence") { Description = "Silence mode" };
+        var keepOldOption = new Option<bool>("--keepold") { Description = "Keep local old file versions, do not override when receiving a new version of file from Azure" };
+        var compareHashOption = new Option<bool>("--comparehash") { Description = "Compare file hash", DefaultValueFactory = _ => true };
 
-        if (parserResult is Parsed<Options> parsedResult)
+        var rootCommand = new RootCommand(".NET Tool for backup files in Azure Blob Storage to local file system.");
+        rootCommand.Add(connectionOption);
+        rootCommand.Add(containerOption);
+        rootCommand.Add(pathOption);
+        rootCommand.Add(threadsOption);
+        rootCommand.Add(silenceOption);
+        rootCommand.Add(keepOldOption);
+        rootCommand.Add(compareHashOption);
+
+        rootCommand.SetAction(async (ParseResult parseResult) =>
         {
-            return await syncService.RunAsync(parsedResult.Value);
-        }
-        else
-        {
-            consoleService.WriteMarkup("[red]ERROR: Failed to parse console parameters.[/]");
-            consoleService.ReadKey();
-            return 1;
-        }
+            var options = new Options
+            {
+                ConnectionString = parseResult.GetValue(connectionOption),
+                Container = parseResult.GetValue(containerOption),
+                Path = parseResult.GetValue(pathOption),
+                Threads = parseResult.GetValue(threadsOption),
+                Silence = parseResult.GetValue(silenceOption),
+                KeepOld = parseResult.GetValue(keepOldOption),
+                CompareHash = parseResult.GetValue(compareHashOption)
+            };
+
+            return await syncService.RunAsync(options);
+        });
+
+        return await rootCommand.Parse(args).InvokeAsync();
     }
 }
