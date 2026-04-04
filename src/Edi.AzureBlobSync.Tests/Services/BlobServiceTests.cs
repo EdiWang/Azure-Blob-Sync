@@ -67,7 +67,7 @@ public class BlobServiceTests : IDisposable
 
         // Assert
         Assert.Equal(2, result.Count);
-        
+
         var file1 = result.First(f => f.FileName == "test1.txt");
         Assert.Equal("test1.txt", file1.FileName);
         Assert.Equal(100, file1.Length);
@@ -143,7 +143,7 @@ public class BlobServiceTests : IDisposable
         var containerName = "test-container";
         var fileName = "subfolder/test.txt";
         var keepOld = false;
-        
+
         Directory.CreateDirectory(_testDirectory);
 
         // Note: This test would require mocking BlobClient.DownloadToAsync
@@ -173,10 +173,10 @@ public class BlobServiceTests : IDisposable
         var fileName = "test.txt";
         var originalContent = "Original content";
         var localFilePath = Path.Combine(_testDirectory, fileName);
-        
+
         Directory.CreateDirectory(_testDirectory);
         await File.WriteAllTextAsync(localFilePath, originalContent);
-        
+
         var keepOld = true;
 
         // Act - Simulate the keep old logic
@@ -191,7 +191,7 @@ public class BlobServiceTests : IDisposable
         Assert.False(File.Exists(localFilePath));
         var timestampedFiles = Directory.GetFiles(_testDirectory, "test_*.txt");
         Assert.Single(timestampedFiles);
-        
+
         var movedFileContent = await File.ReadAllTextAsync(timestampedFiles[0]);
         Assert.Equal(originalContent, movedFileContent);
     }
@@ -203,10 +203,10 @@ public class BlobServiceTests : IDisposable
         var fileName = "test.txt";
         var originalContent = "Original content";
         var localFilePath = Path.Combine(_testDirectory, fileName);
-        
+
         Directory.CreateDirectory(_testDirectory);
         await File.WriteAllTextAsync(localFilePath, originalContent);
-        
+
         var keepOld = false;
 
         // Act - Simulate the overwrite logic (file exists but keepOld is false)

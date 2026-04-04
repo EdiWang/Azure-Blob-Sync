@@ -1,6 +1,5 @@
-﻿using System.CommandLine;
-using System.CommandLine.Parsing;
-using Edi.AzureBlobSync.Services;
+﻿using Edi.AzureBlobSync.Services;
+using System.CommandLine;
 using System.Text;
 
 namespace Edi.AzureBlobSync;
@@ -26,14 +25,16 @@ class Program
         var keepOldOption = new Option<bool>("--keepold") { Description = "Keep local old file versions, do not override when receiving a new version of file from Azure" };
         var compareHashOption = new Option<bool>("--comparehash") { Description = "Compare file hash", DefaultValueFactory = _ => true };
 
-        var rootCommand = new RootCommand(".NET Tool for backup files in Azure Blob Storage to local file system.");
-        rootCommand.Add(connectionOption);
-        rootCommand.Add(containerOption);
-        rootCommand.Add(pathOption);
-        rootCommand.Add(threadsOption);
-        rootCommand.Add(silenceOption);
-        rootCommand.Add(keepOldOption);
-        rootCommand.Add(compareHashOption);
+        var rootCommand = new RootCommand(".NET Tool for backup files in Azure Blob Storage to local file system.")
+        {
+            connectionOption,
+            containerOption,
+            pathOption,
+            threadsOption,
+            silenceOption,
+            keepOldOption,
+            compareHashOption
+        };
 
         rootCommand.SetAction(async (ParseResult parseResult) =>
         {

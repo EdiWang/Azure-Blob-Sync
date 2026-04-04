@@ -72,7 +72,7 @@ public class FileServiceTests : IDisposable
         // Assert
         Assert.Single(result);
         Assert.False(string.IsNullOrEmpty(result[0].ContentMD5));
-        
+
         // Verify the hash is correct
         var expectedHash = ComputeExpectedHash(testContent);
         Assert.Equal(expectedHash, result[0].ContentMD5);
