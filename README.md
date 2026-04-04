@@ -8,7 +8,7 @@ You may also checkout [AzCopy](https://learn.microsoft.com/en-us/azure/storage/c
 
 Prerequests: 
 
-- .NET 8.0 SDK 
+- .NET 10.0 SDK 
 
 ```bash
 dotnet tool install --global edi.azureblobsync
