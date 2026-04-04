@@ -9,7 +9,7 @@ public class AzureBlobSyncService(
     IConsoleService consoleService,
     IOptionsValidator optionsValidator)
 {
-    private int _notDownloaded = 0;
+    private int _downloaded = 0;
     private int _archived = 0;
 
     public async Task<int> RunAsync(Options options)
@@ -98,7 +98,7 @@ public class AzureBlobSyncService(
         var redundantLocalFiles = localFiles.Except(cloudFiles, comparer).ToList();
         HandleRedundantLocalFiles(redundantLocalFiles, options);
 
-        DisplaySummary(filesToDownload.Count, redundantLocalFiles.Count);
+        DisplaySummary(redundantLocalFiles.Count);
     }
 
     private async Task DownloadFilesAsync(List<FileSyncInfo> filesToDownload, Options options)
@@ -111,7 +111,6 @@ public class AzureBlobSyncService(
             if (file.IsArchive)
             {
                 Interlocked.Increment(ref _archived);
-                Interlocked.Increment(ref _notDownloaded);
                 consoleService.WriteMarkup($"[yellow]Skipped archived file '{file.FileName}'.[/]\n");
                 continue;
             }
@@ -123,11 +122,11 @@ public class AzureBlobSyncService(
                 try
                 {
                     await blobService.DownloadBlobAsync(options.ConnectionString, options.Container, file.FileName, options.Path, options.KeepOld);
+                    Interlocked.Increment(ref _downloaded);
                     consoleService.WriteLine($"[{DateTime.Now:HH:mm:ss}] Downloaded {file.FileName}.");
                 }
                 catch (Exception ex)
                 {
-                    Interlocked.Increment(ref _notDownloaded);
                     consoleService.WriteMarkup($"[red]Failed to download {file.FileName}: {ex.Message}[/]\n");
                 }
                 finally
@@ -184,9 +183,9 @@ public class AzureBlobSyncService(
         }
     }
 
-    private void DisplaySummary(int downloadedCount, int deletedCount)
+    private void DisplaySummary(int deletedCount)
     {
         consoleService.WriteLine("----------------------------------------------------");
-        consoleService.WriteMarkup($"[green]{downloadedCount - _notDownloaded}[/] file(s) downloaded, [yellow]{deletedCount}[/] file(s) deleted, {_archived} archived file(s) skipped.\n");
+        consoleService.WriteMarkup($"[green]{_downloaded}[/] file(s) downloaded, [yellow]{deletedCount}[/] file(s) deleted, {_archived} archived file(s) skipped.\n");
     }
 }
